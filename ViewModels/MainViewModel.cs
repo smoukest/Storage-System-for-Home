@@ -280,11 +280,11 @@ namespace ApartmentInventory.ViewModels
             }
         }
 
-        public void UpdateItem(int id, string name, string itemType, string description, int? containerId, string locationInRoom)
+        public void UpdateItem(int id, string name, string itemType, string description, int roomId, int? containerId, string locationInRoom)
         {
             try
             {
-                _dbContext.UpdateItem(id, name, itemType, description, containerId, locationInRoom);
+                _dbContext.UpdateItem(id, name, itemType, description, roomId, containerId, locationInRoom);
                 LoadRooms();
             }
             catch (Exception ex)

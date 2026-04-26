@@ -4,7 +4,17 @@ namespace ApartmentInventory.Views
 {
     public partial class AddContainerWindow : Window
     {
-        public string ContainerName { get; set; }
+        private string _containerName;
+        public string ContainerName
+        {
+            get => _containerName;
+            set
+            {
+                _containerName = value;
+                if (ContainerNameTextBox != null)
+                    ContainerNameTextBox.Text = value ?? string.Empty;
+            }
+        }
 
         public AddContainerWindow()
         {

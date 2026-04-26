@@ -40,14 +40,22 @@ namespace ApartmentInventory.Data
                         {
                             while (reader.Read())
                             {
-                                rooms.Add(new Room
+                                var room = new Room
                                 {
                                     Id = (int)reader["id"],
                                     Name = (string)reader["name"]
-                                });
+                                };
+                                rooms.Add(room);
                             }
                         }
                     }
+                }
+
+                // Загружаем контейнеры и предметы для каждой комнаты
+                foreach (var room in rooms)
+                {
+                    LoadContainersForRoom(room);
+                    LoadItemsForRoom(room);
                 }
             }
             catch (Exception ex)
@@ -78,7 +86,8 @@ namespace ApartmentInventory.Data
                                 {
                                     Id = (int)reader["id"],
                                     Name = (string)reader["name"],
-                                    RoomId = (int)reader["room_id"]
+                                    RoomId = (int)reader["room_id"],
+                                    Room = room
                                 });
                             }
                         }
@@ -102,12 +111,13 @@ namespace ApartmentInventory.Data
                     connection.Open();
                     using (var cmd = connection.CreateCommand())
                     {
-                        cmd.CommandText = "SELECT id, name, type, description, location_in_room, container_id FROM Items WHERE container_id = @containerId ORDER BY name";
+                        cmd.CommandText = "SELECT id, name, type, description, location_in_room, container_id, room_id FROM Items WHERE container_id = @containerId ORDER BY name";
                         cmd.Parameters.AddWithValue("@containerId", container.Id);
                         using (var reader = cmd.ExecuteReader())
                         {
                             while (reader.Read())
                             {
+                                var roomId = reader["room_id"];
                                 container.Items.Add(new Item
                                 {
                                     Id = (int)reader["id"],
@@ -115,7 +125,10 @@ namespace ApartmentInventory.Data
                                     ItemType = (string)reader["type"],
                                     Description = (string)reader["description"],
                                     LocationInRoom = (string)reader["location_in_room"],
-                                    ContainerId = (int)reader["container_id"]
+                                    ContainerId = (int)reader["container_id"],
+                                    RoomId = roomId == DBNull.Value ? 0 : (int)roomId,
+                                    Container = container,
+                                    Room = container.Room
                                 });
                             }
                         }
@@ -131,30 +144,38 @@ namespace ApartmentInventory.Data
         public void LoadItemsForRoom(Room room)
         {
             if (room == null) return;
-            var items = new ObservableCollection<Item>();
 
             try
             {
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
                     connection.Open();
+                    // Загружаем предметы в контейнерах
+                    foreach (var container in room.Containers)
+                    {
+                        LoadItemsForContainer(container);
+                    }
+
+                    // Загружаем предметы БЕЗ контейнера (room.Items) - теперь с фильтрацией по room_id
                     using (var cmd = connection.CreateCommand())
                     {
-                        cmd.CommandText = "SELECT i.id, i.name, i.type, i.description, i.location_in_room, i.container_id FROM Items i " +
-                                        "JOIN Containers c ON i.container_id = c.id WHERE c.room_id = @roomId ORDER BY i.name";
+                        cmd.CommandText = "SELECT id, name, type, description, location_in_room, container_id, room_id FROM Items " +
+                                        "WHERE container_id IS NULL AND room_id = @roomId ORDER BY name";
                         cmd.Parameters.AddWithValue("@roomId", room.Id);
                         using (var reader = cmd.ExecuteReader())
                         {
                             while (reader.Read())
                             {
-                                items.Add(new Item
+                                room.Items.Add(new Item
                                 {
                                     Id = (int)reader["id"],
                                     Name = (string)reader["name"],
                                     ItemType = (string)reader["type"],
                                     Description = (string)reader["description"],
                                     LocationInRoom = (string)reader["location_in_room"],
-                                    ContainerId = (int)reader["container_id"]
+                                    ContainerId = null,
+                                    RoomId = room.Id,
+                                    Room = room
                                 });
                             }
                         }
@@ -305,12 +326,13 @@ namespace ApartmentInventory.Data
                     connection.Open();
                     using (var cmd = connection.CreateCommand())
                     {
-                        cmd.CommandText = "INSERT INTO Items (name, type, description, location_in_room, container_id) VALUES (@name, @type, @description, @location, @containerId)";
+                        cmd.CommandText = "INSERT INTO Items (name, type, description, location_in_room, container_id, room_id) VALUES (@name, @type, @description, @location, @containerId, @roomId)";
                         cmd.Parameters.AddWithValue("@name", name ?? "");
                         cmd.Parameters.AddWithValue("@type", itemType ?? "");
                         cmd.Parameters.AddWithValue("@description", description ?? "");
                         cmd.Parameters.AddWithValue("@location", locationInRoom ?? "");
                         cmd.Parameters.AddWithValue("@containerId", (object)containerId ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@roomId", roomId);
                         cmd.ExecuteNonQuery();
                     }
                 }
@@ -321,7 +343,7 @@ namespace ApartmentInventory.Data
             }
         }
 
-        public void UpdateItem(int id, string name, string itemType, string description, int? containerId, string locationInRoom)
+        public void UpdateItem(int id, string name, string itemType, string description, int roomId, int? containerId, string locationInRoom)
         {
             try
             {
@@ -330,12 +352,13 @@ namespace ApartmentInventory.Data
                     connection.Open();
                     using (var cmd = connection.CreateCommand())
                     {
-                        cmd.CommandText = "UPDATE Items SET name = @name, type = @type, description = @description, location_in_room = @location, container_id = @containerId WHERE id = @id";
+                        cmd.CommandText = "UPDATE Items SET name = @name, type = @type, description = @description, location_in_room = @location, container_id = @containerId, room_id = @roomId WHERE id = @id";
                         cmd.Parameters.AddWithValue("@name", name ?? "");
                         cmd.Parameters.AddWithValue("@type", itemType ?? "");
                         cmd.Parameters.AddWithValue("@description", description ?? "");
                         cmd.Parameters.AddWithValue("@location", locationInRoom ?? "");
                         cmd.Parameters.AddWithValue("@containerId", (object)containerId ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@roomId", roomId);
                         cmd.Parameters.AddWithValue("@id", id);
                         cmd.ExecuteNonQuery();
                     }

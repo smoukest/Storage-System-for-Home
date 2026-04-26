@@ -173,5 +173,8 @@
     <Folder Include="Database\" />
     <Folder Include="V\" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="SQL\migration_add_room_id_to_items.sql" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

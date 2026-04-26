@@ -152,30 +152,42 @@ namespace _25._04
 
         private void AddItemButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_viewModel.SelectedRoom == null)
-            {
-                MessageBox.Show("Пожалуйста, выберите комнату или контейнер");
-                return;
-            }
-
             var dialog = new AddItemWindow { Owner = this };
-            dialog.SetContainers(_viewModel.SelectedRoom.Containers.ToList());
+
+            // Передаем список всех комнат
+            dialog.SetRooms(_viewModel.Rooms.ToList());
+
+            // Если выбрана комната, устанавливаем её по умолчанию
+            if (_viewModel.SelectedRoom != null)
+            {
+                // Устанавливаем контейнеры для выбранной комнаты
+                dialog.SetContainers(_viewModel.SelectedRoom.Containers.ToList());
+            }
 
             if (dialog.ShowDialog() == true)
             {
                 int? containerId = dialog.SelectedContainer?.Id;
-                if (dialog.SelectedContainer?.Name == "Нет")
+                if (dialog.SelectedContainer?.Name == "Нет" || dialog.SelectedContainer?.Id == -1)
                     containerId = null;
 
-                _viewModel.AddItem(
-                    dialog.ItemName,
-                    dialog.ItemType,
-                    dialog.Description,
-                    _viewModel.SelectedRoom.Id,
-                    containerId,
-                    dialog.LocationInRoom
-                );
-                RefreshTreeView();
+                // Используем выбранную в диалоге комнату
+                var roomId = dialog.SelectedRoom?.Id ?? _viewModel.SelectedRoom?.Id;
+                if (roomId.HasValue)
+                {
+                    _viewModel.AddItem(
+                        dialog.ItemName,
+                        dialog.ItemType,
+                        dialog.Description,
+                        roomId.Value,
+                        containerId,
+                        dialog.LocationInRoom
+                    );
+                    RefreshTreeView();
+                }
+                else
+                {
+                    MessageBox.Show("Пожалуйста, выберите комнату");
+                }
             }
         }
 
@@ -210,6 +222,7 @@ namespace _25._04
                 dialog.LocationInRoom = _viewModel.SelectedItem.LocationInRoom;
 
                 var room = _viewModel.SelectedItem.Room;
+                dialog.SetRooms(_viewModel.Rooms.ToList());
                 dialog.SetContainers(room.Containers.ToList());
 
                 if (_viewModel.SelectedItem.Container != null)
@@ -218,14 +231,16 @@ namespace _25._04
                 if (dialog.ShowDialog() == true)
                 {
                     int? containerId = dialog.SelectedContainer?.Id;
-                    if (dialog.SelectedContainer?.Name == "Нет")
+                    if (dialog.SelectedContainer?.Name == "Нет" || dialog.SelectedContainer?.Id == -1)
                         containerId = null;
 
+                    var roomId = dialog.SelectedRoom?.Id ?? room.Id;
                     _viewModel.UpdateItem(
                         _viewModel.SelectedItem.Id,
                         dialog.ItemName,
                         dialog.ItemType,
                         dialog.Description,
+                        roomId,
                         containerId,
                         dialog.LocationInRoom
                     );
@@ -321,11 +336,12 @@ namespace _25._04
         private void OnAddItemRequested(Room room, Container container)
         {
             var dialog = new AddItemWindow { Owner = this };
+            dialog.SetRooms(_viewModel.Rooms.ToList());
             dialog.SetContainers(room.Containers.ToList());
             if (dialog.ShowDialog() == true)
             {
                 int? containerId = dialog.SelectedContainer?.Id;
-                if (dialog.SelectedContainer?.Name == "Нет")
+                if (dialog.SelectedContainer?.Name == "Нет" || dialog.SelectedContainer?.Id == -1)
                     containerId = null;
 
                 _viewModel.AddItem(
@@ -349,6 +365,7 @@ namespace _25._04
             dialog.LocationInRoom = item.LocationInRoom;
 
             var room = item.Room;
+            dialog.SetRooms(_viewModel.Rooms.ToList());
             dialog.SetContainers(room.Containers.ToList());
 
             if (item.Container != null)
@@ -357,14 +374,16 @@ namespace _25._04
             if (dialog.ShowDialog() == true)
             {
                 int? containerId = dialog.SelectedContainer?.Id;
-                if (dialog.SelectedContainer?.Name == "Нет")
+                if (dialog.SelectedContainer?.Name == "Нет" || dialog.SelectedContainer?.Id == -1)
                     containerId = null;
 
+                var roomId = dialog.SelectedRoom?.Id ?? item.Room?.Id ?? 1;
                 _viewModel.UpdateItem(
                     item.Id,
                     dialog.ItemName,
                     dialog.ItemType,
                     dialog.Description,
+                    roomId,
                     containerId,
                     dialog.LocationInRoom
                 );
