@@ -188,6 +188,18 @@ namespace _25._04
             public bool HasChildren => Children != null && Children.Count > 0;
             public TreeGridNode Parent { get; set; }
             public List<TreeGridNode> Children { get; set; } = new List<TreeGridNode>();
+
+            public string ExpandIndicator 
+            { 
+                get 
+                {
+                    if (HasChildren)
+                    {
+                        return IsExpanded ? "▼" : "▶";
+                    }
+                    return "";
+                }
+            }
         }
 
         private void AddRoomButton_Click(object sender, RoutedEventArgs e)
@@ -356,11 +368,7 @@ namespace _25._04
         private void ExpandAllButton_Click(object sender, RoutedEventArgs e)
         {
             _isExpanded = !_isExpanded;
-            var button = sender as Button;
-            if (button != null)
-            {
-                button.Content = _isExpanded ? "↕ Скрыть все" : "↕ Раскрыть все";
-            }
+            ExpandAllButton.Content = _isExpanded ? "↕ Скрыть все" : "↕ Раскрыть все";
 
             foreach (var node in _flatNodes)
             {
@@ -378,6 +386,8 @@ namespace _25._04
         private void RefreshButton_Click(object sender, RoutedEventArgs e)
         {
             _viewModel.RefreshCommand.Execute(null);
+            _isExpanded = false;
+            ExpandAllButton.Content = "↕ Раскрыть все";
             RefreshTreeView();
         }
 

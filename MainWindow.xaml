@@ -35,7 +35,7 @@
             <Button Content="🔄 Обновить" Width="100" Height="40" Click="RefreshButton_Click" 
                     Background="#9C27B0" Foreground="White" FontSize="12" Cursor="Hand" Margin="5"/>
             <Separator Width="1" Margin="10,0"/>
-            <Button Content="↕ Раскрыть все" Width="120" Height="40" Click="ExpandAllButton_Click" 
+            <Button x:Name="ExpandAllButton" Content="↕ Раскрыть все" Width="120" Height="40" Click="ExpandAllButton_Click" 
                     Background="#607D8B" Foreground="White" FontSize="12" Cursor="Hand" Margin="5"/>
             </StackPanel>
         </Border>
@@ -50,6 +50,15 @@
                           GridLinesVisibility="All" HorizontalGridLinesBrush="Black" VerticalGridLinesBrush="Black"
                           HeadersVisibility="Column" AlternatingRowBackground="#F0F0F0" RowBackground="#FFFFFF">
                     <DataGrid.Columns>
+                        <DataGridTextColumn Header="" Binding="{Binding ExpandIndicator}" Width="30" >
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="HorizontalAlignment" Value="Center"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="FontWeight" Value="Bold"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
                         <DataGridTextColumn Header="Название" Binding="{Binding Name}" Width="250"/>
                         <DataGridTextColumn Header="Тип" Binding="{Binding ItemType}" Width="150"/>
                         <DataGridTextColumn Header="Местоположение" Binding="{Binding LocationInRoom}" Width="150"/>
@@ -64,14 +73,21 @@
                             <Setter Property="Background" Value="White" />
                             <Setter Property="FontWeight" Value="Normal" />
                             <Style.Triggers>
-                                <Trigger Property="AlternationIndex" Value="1">
-                                    <Setter Property="Background" Value="#F0F0F0" />
-                                </Trigger>
-                                <!-- Выделение для комнат и контейнеров, содержащих элементы -->
-                                <DataTrigger Binding="{Binding HasChildren}" Value="True">
-                                    <Setter Property="FontWeight" Value="Bold" />
-                                    <Setter Property="Background" Value="#E3F2FD" />
+                                <!-- Цвета по типам элементов -->
+                                <DataTrigger Binding="{Binding ElementType}" Value="Комната">
+                                    <Setter Property="Background" Value="#E8F5E9" />
                                 </DataTrigger>
+                                <DataTrigger Binding="{Binding ElementType}" Value="Контейнер">
+                                    <Setter Property="Background" Value="#FFF3E0" />
+                                </DataTrigger>
+                                <!-- Для вещей (ElementType="Вещь") оставляем чередование -->
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding ElementType}" Value="Вещь" />
+                                        <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=AlternationIndex}" Value="1" />
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Background" Value="#F0F0F0" />
+                                </MultiDataTrigger>
                             </Style.Triggers>
                         </Style>
                     </DataGrid.RowStyle>
