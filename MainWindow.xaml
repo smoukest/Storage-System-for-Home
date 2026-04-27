@@ -46,6 +46,8 @@
             <Border Background="White" BorderThickness="1" BorderBrush="#CCCCCC">
                 <DataGrid x:Name="ItemsDataGrid" AutoGenerateColumns="False" IsReadOnly="True" 
                           SelectionMode="Single" SelectionChanged="ItemsDataGrid_SelectionChanged"
+                          PreviewMouseRightButtonDown="ItemsDataGrid_PreviewMouseRightButtonDown"
+                          PreviewMouseLeftButtonDown="ItemsDataGrid_PreviewMouseLeftButtonDown"
                           CanUserAddRows="False" CanUserDeleteRows="False" RowHeight="30"
                           GridLinesVisibility="All" HorizontalGridLinesBrush="Black" VerticalGridLinesBrush="Black"
                           HeadersVisibility="Column" AlternatingRowBackground="#F0F0F0" RowBackground="#FFFFFF">

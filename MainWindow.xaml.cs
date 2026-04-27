@@ -141,8 +141,85 @@ namespace _25._04
             ItemsDataGrid.ItemsSource = _flatNodes;
         }
 
+        private bool _ignoreNextSelectionChange = false;
+
+        private void ItemsDataGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (Keyboard.Modifiers == ModifierKeys.Shift)
+            {
+                var hit = VisualTreeHelper.HitTest(ItemsDataGrid, e.GetPosition(ItemsDataGrid));
+                if (hit != null)
+                {
+                    var row = GetVisualParent<DataGridRow>(hit.VisualHit);
+                    if (row != null && row.Item is TreeGridNode node)
+                    {
+                        if (node.ElementType == "Комната" || node.ElementType == "Контейнер")
+                        {
+                            e.Handled = true;
+                            _ignoreNextSelectionChange = true;
+                            ItemsDataGrid.SelectedItem = node;
+
+                            bool targetExpandedState = !node.IsExpanded;
+                            node.IsExpanded = targetExpandedState;
+                            ExpandRecursively(node, targetExpandedState);
+
+                            UpdateVisibility(node);
+                            ItemsDataGrid.ItemsSource = null;
+                            ItemsDataGrid.ItemsSource = _flatNodes;
+                            CheckAllExpandedState();
+
+                            UpdateSelectionState(node);
+                            _ignoreNextSelectionChange = false;
+                        }
+                    }
+                }
+            }
+        }
+
+        private void ExpandRecursively(TreeGridNode parentNode, bool isExpanded)
+        {
+            foreach (var child in parentNode.Children)
+            {
+                if (child.ElementType == "Комната" || child.ElementType == "Контейнер")
+                {
+                    child.IsExpanded = isExpanded;
+                    ExpandRecursively(child, isExpanded);
+                }
+            }
+        }
+
+        private void ItemsDataGrid_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            var hit = VisualTreeHelper.HitTest(ItemsDataGrid, e.GetPosition(ItemsDataGrid));
+            if (hit != null)
+            {
+                var row = GetVisualParent<DataGridRow>(hit.VisualHit);
+                if (row != null && row.Item is TreeGridNode node)
+                {
+                    e.Handled = true;
+                    _ignoreNextSelectionChange = true;
+                    ItemsDataGrid.SelectedItem = node;
+
+                    UpdateSelectionState(node);
+                    _ignoreNextSelectionChange = false;
+                }
+            }
+        }
+
+        private static T GetVisualParent<T>(DependencyObject element) where T : DependencyObject
+        {
+            while (element != null && !(element is T))
+            {
+                element = VisualTreeHelper.GetParent(element);
+            }
+            return element as T;
+        }
+
         private void ItemsDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (_ignoreNextSelectionChange) 
+                return;
+
             if (ItemsDataGrid.SelectedItem is TreeGridNode node)
             {
                 if (node.ElementType == "Комната" || node.ElementType == "Контейнер")
@@ -154,29 +231,34 @@ namespace _25._04
                     CheckAllExpandedState();
                 }
 
-                if (node.OriginalItem is Room room)
-                {
-                    _viewModel.SelectedRoom = room;
-                    _viewModel.SelectedContainer = null;
-                    _viewModel.SelectedItem = null;
-                    InfoTextBlock.Text = $"Комната: {room.Name}";
-                }
-                else if (node.OriginalItem is Container container)
-                {
-                    _viewModel.SelectedContainer = container;
-                    _viewModel.SelectedRoom = container.Room;
-                    _viewModel.SelectedItem = null;
-                    InfoTextBlock.Text = $"Контейнер: {container.Name} (в комнате: {container.Room.Name})";
-                }
-                else if (node.OriginalItem is Item item)
-                {
-                    _viewModel.SelectedItem = item;
-                    _viewModel.SelectedRoom = item.Room;
-                    _viewModel.SelectedContainer = item.Container;
-                    var location = string.IsNullOrEmpty(item.LocationInRoom) ? "не указано" : item.LocationInRoom;
-                    var container_name = item.Container?.Name ?? "нет";
-                    InfoTextBlock.Text = $"Вещь: {item.Name} | Вид: {item.ItemType} | Контейнер: {container_name} | Местоположение: {location} | Описание: {item.Description}";
-                }
+                UpdateSelectionState(node);
+            }
+        }
+
+        private void UpdateSelectionState(TreeGridNode node)
+        {
+            if (node.OriginalItem is Room room)
+            {
+                _viewModel.SelectedRoom = room;
+                _viewModel.SelectedContainer = null;
+                _viewModel.SelectedItem = null;
+                InfoTextBlock.Text = $"Комната: {room.Name}";
+            }
+            else if (node.OriginalItem is Container container)
+            {
+                _viewModel.SelectedContainer = container;
+                _viewModel.SelectedRoom = container.Room;
+                _viewModel.SelectedItem = null;
+                InfoTextBlock.Text = $"Контейнер: {container.Name} (в комнате: {container.Room.Name})";
+            }
+            else if (node.OriginalItem is Item item)
+            {
+                _viewModel.SelectedItem = item;
+                _viewModel.SelectedRoom = item.Room;
+                _viewModel.SelectedContainer = item.Container;
+                var location = string.IsNullOrEmpty(item.LocationInRoom) ? "не указано" : item.LocationInRoom;
+                var container_name = item.Container?.Name ?? "нет";
+                InfoTextBlock.Text = $"Вещь: {item.Name} | Вид: {item.ItemType} | Контейнер: {container_name} | Местоположение: {location} | Описание: {item.Description}";
             }
         }
 
