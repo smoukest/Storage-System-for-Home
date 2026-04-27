@@ -23,11 +23,7 @@
             <StackPanel Orientation="Horizontal">
                 <Button Content="➕ Добавить комнату" Width="140" Height="40" Click="AddRoomButton_Click"
                     Background="#4CAF50" Foreground="White" FontSize="12" Cursor="Hand" Margin="5"/>
-            <Button Content="✎ Редактировать" Width="120" Height="40" Click="EditButton_Click" 
-                    Background="#FFC107" Foreground="Black" FontSize="12" Cursor="Hand" Margin="5"/>
-            <Button Content="🗑 Удалить" Width="100" Height="40" Click="DeleteButton_Click" 
-                    Background="#F44336" Foreground="White" FontSize="12" Cursor="Hand" Margin="5"/>
-            <Button Content="🔄 Обновить" Width="100" Height="40" Click="RefreshButton_Click" 
+                <Button Content="🔄 Обновить" Width="100" Height="40" Click="RefreshButton_Click" 
                     Background="#9C27B0" Foreground="White" FontSize="12" Cursor="Hand" Margin="5"/>
             <Separator Width="1" Margin="10,0"/>
             <Button x:Name="ExpandAllButton" Content="↕ Раскрыть все" Width="120" Height="40" Click="ExpandAllButton_Click" 
@@ -45,18 +41,18 @@
                           PreviewMouseLeftButtonDown="ItemsDataGrid_PreviewMouseLeftButtonDown"
                           CanUserAddRows="False" CanUserDeleteRows="False" RowHeight="30"
                           GridLinesVisibility="All" HorizontalGridLinesBrush="Black" VerticalGridLinesBrush="Black"
-                          HeadersVisibility="Column" AlternatingRowBackground="#F0F0F0" RowBackground="#FFFFFF">
+                          HeadersVisibility="Column" EnableRowVirtualization="False">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="" Binding="{Binding ExpandIndicator}" Width="30" >
-                            <DataGridTextColumn.ElementStyle>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="HorizontalAlignment" Value="Center"/>
-                                    <Setter Property="VerticalAlignment" Value="Center"/>
-                                    <Setter Property="FontWeight" Value="Bold"/>
-                                </Style>
-                            </DataGridTextColumn.ElementStyle>
-                        </DataGridTextColumn>
-                        <DataGridTextColumn Header="Название" Binding="{Binding Name}" Width="250"/>
+                        <DataGridTemplateColumn Header="Название" Width="280">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Margin="{Binding IndentMargin}">
+                                        <TextBlock Text="{Binding ExpandIndicator}" Width="20" TextAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" Foreground="#555555" Margin="0,0,5,0"/>
+                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTextColumn Header="Тип" Binding="{Binding ItemType}" Width="150"/>
                         <DataGridTextColumn Header="Местоположение" Binding="{Binding LocationInRoom}" Width="150"/>
                         <DataGridTextColumn Header="Контейнер/Комната" Binding="{Binding Container.Name}" Width="150"/>
@@ -69,22 +65,24 @@
                             <Setter Property="Visibility" Value="{Binding IsVisible, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                             <Setter Property="Background" Value="White" />
                             <Setter Property="FontWeight" Value="Normal" />
+                            <!-- Добавляем стиль для отмены рамки выделения, чтобы цвет было видно лучше -->
+                            <Setter Property="BorderThickness" Value="0"/>
                             <Style.Triggers>
                                 <!-- Цвета по типам элементов -->
                                 <DataTrigger Binding="{Binding ElementType}" Value="Комната">
-                                    <Setter Property="Background" Value="#E8F5E9" />
+                                    <Setter Property="Background" Value="#E3F2FD" />
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding ElementType}" Value="Контейнер">
-                                    <Setter Property="Background" Value="#FFF3E0" />
+                                    <Setter Property="Background" Value="#FFF8E1" />
                                 </DataTrigger>
-                                <!-- Для вещей (ElementType="Вещь") оставляем чередование -->
-                                <MultiDataTrigger>
-                                    <MultiDataTrigger.Conditions>
-                                        <Condition Binding="{Binding ElementType}" Value="Вещь" />
-                                        <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=AlternationIndex}" Value="1" />
-                                    </MultiDataTrigger.Conditions>
-                                    <Setter Property="Background" Value="#F0F0F0" />
-                                </MultiDataTrigger>
+                                <!-- Для вещей (ElementType="Вещь") мы не используем AlternationIndex, так как у нас в одном списке хранятся скрытые и видимые элементы -->
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#E8E8E8" />
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Background" Value="#CCE8FF" />
+                                    <Setter Property="Foreground" Value="Black" />
+                                </Trigger>
                             </Style.Triggers>
                         </Style>
                     </DataGrid.RowStyle>

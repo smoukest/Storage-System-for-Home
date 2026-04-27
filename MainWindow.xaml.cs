@@ -67,11 +67,10 @@ namespace _25._04
                 // Рекурсивный метод для добавления контейнеров
                 void AddContainerNodes(Container container, TreeGridNode parentNode, int level)
                 {
-                    var indent = new string(' ', level * 4);
                     var containerNode = new TreeGridNode
                     {
                         OriginalItem = container,
-                        Name = $"{indent}📦 {container.Name}",
+                        Name = $"📦 {container.Name}",
                         ElementType = "Контейнер",
                         Level = level,
                         IsExpanded = false,
@@ -90,11 +89,10 @@ namespace _25._04
                     // Затем вещи внутри этого контейнера
                     foreach (var item in container.Items)
                     {
-                        var itemIndent = new string(' ', (level + 1) * 4);
                         var itemNode = new TreeGridNode
                         {
                             OriginalItem = item,
-                            Name = $"{itemIndent}📄 {item.Name}",
+                            Name = $"📄 {item.Name}",
                             ItemType = item.ItemType,
                             Description = item.Description,
                             LocationInRoom = item.LocationInRoom,
@@ -123,7 +121,7 @@ namespace _25._04
                     var itemNode = new TreeGridNode
                     {
                         OriginalItem = item,
-                        Name = $"    📄 {item.Name}",
+                        Name = $"📄 {item.Name}",
                         ItemType = item.ItemType,
                         Description = item.Description,
                         LocationInRoom = item.LocationInRoom,
@@ -324,6 +322,7 @@ namespace _25._04
 
         public class TreeGridNode
         {
+            public Thickness IndentMargin => new Thickness(Level * 20, 0, 0, 0);
             public object OriginalItem { get; set; }
             public string Name { get; set; }
             public string ItemType { get; set; }
