@@ -202,6 +202,32 @@ namespace _25._04
 
                     UpdateSelectionState(node);
                     _ignoreNextSelectionChange = false;
+
+                    ContextMenu contextMenu = new ContextMenu();
+
+                    if (node.ElementType == "Комната" || node.ElementType == "Контейнер")
+                    {
+                        MenuItem addContainerMenu = new MenuItem { Header = "➕ Добавить контейнер" };
+                        addContainerMenu.Click += AddContainerButton_Click;
+                        contextMenu.Items.Add(addContainerMenu);
+
+                        MenuItem addItemMenu = new MenuItem { Header = "➕ Добавить вещь" };
+                        addItemMenu.Click += AddItemButton_Click;
+                        contextMenu.Items.Add(addItemMenu);
+
+                        contextMenu.Items.Add(new Separator());
+                    }
+
+                    MenuItem editMenu = new MenuItem { Header = "✎ Редактировать" };
+                    editMenu.Click += EditButton_Click;
+                    contextMenu.Items.Add(editMenu);
+
+                    MenuItem deleteMenu = new MenuItem { Header = "🗑 Удалить", Foreground = Brushes.Red };
+                    deleteMenu.Click += DeleteButton_Click;
+                    contextMenu.Items.Add(deleteMenu);
+
+                    row.ContextMenu = contextMenu;
+                    contextMenu.IsOpen = true;
                 }
             }
         }
