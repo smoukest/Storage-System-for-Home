@@ -23,11 +23,6 @@
             <StackPanel Orientation="Horizontal">
                 <Button Content="➕ Добавить комнату" Width="140" Height="40" Click="AddRoomButton_Click"
                     Background="#4CAF50" Foreground="White" FontSize="12" Cursor="Hand" Margin="5"/>
-            <Button Content="➕ Добавить контейнер" Width="160" Height="40" Click="AddContainerButton_Click" 
-                    Background="#2196F3" Foreground="White" FontSize="12" Cursor="Hand" Margin="5"/>
-            <Button Content="➕ Добавить вещь" Width="140" Height="40" Click="AddItemButton_Click" 
-                    Background="#FF9800" Foreground="White" FontSize="12" Cursor="Hand" Margin="5"/>
-            <Separator Width="1" Margin="10,0"/>
             <Button Content="✎ Редактировать" Width="120" Height="40" Click="EditButton_Click" 
                     Background="#FFC107" Foreground="Black" FontSize="12" Cursor="Hand" Margin="5"/>
             <Button Content="🗑 Удалить" Width="100" Height="40" Click="DeleteButton_Click" 

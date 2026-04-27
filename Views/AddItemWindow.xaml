@@ -15,9 +15,9 @@
             <TextBlock Text="Местоположение:" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
             <TextBox x:Name="LocationTextBox" Height="36" Padding="10" Margin="0,0,0,12" FontSize="12"/>
             <TextBlock Text="Комната:" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
-            <ComboBox x:Name="RoomComboBox" Height="36" Padding="10" Margin="0,0,0,12" FontSize="12"/>
+            <ComboBox x:Name="RoomComboBox" Height="36" Padding="10" Margin="0,0,0,12" FontSize="12" IsEnabled="False"/>
             <TextBlock Text="Коробка:" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
-            <ComboBox x:Name="ContainerComboBox" Height="36" Padding="10" Margin="0,0,0,18" FontSize="12" SelectionChanged="ContainerComboBox_SelectionChanged"/>
+            <ComboBox x:Name="ContainerComboBox" Height="36" Padding="10" Margin="0,0,0,18" FontSize="12" IsEnabled="False" SelectionChanged="ContainerComboBox_SelectionChanged"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Content="ОК" Width="80" Height="36" Click="OkButton_Click" Margin="0,0,10,0" FontSize="12"/>
                 <Button Content="Отмена" Width="80" Height="36" IsCancel="True" FontSize="12"/>

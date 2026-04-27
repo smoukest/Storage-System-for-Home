@@ -47,6 +47,27 @@ namespace ApartmentInventory.Views
             }
         }
 
+        public void PreselectRoomAndContainer(Room room, Container container)
+        {
+            if (room != null && _rooms != null)
+            {
+                var matchingRoom = _rooms.FirstOrDefault(r => r.Id == room.Id);
+                if (matchingRoom != null)
+                {
+                    RoomComboBox.SelectedItem = matchingRoom;
+                }
+            }
+
+            if (container != null && _containers != null)
+            {
+                var matchingContainer = ContainerComboBox.Items.Cast<Container>().FirstOrDefault(c => c.Id == container.Id);
+                if (matchingContainer != null)
+                {
+                    ContainerComboBox.SelectedItem = matchingContainer;
+                }
+            }
+        }
+
         private void RoomComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             var selectedRoom = RoomComboBox.SelectedItem as Room;

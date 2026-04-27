@@ -382,14 +382,12 @@ namespace _25._04
         {
             var dialog = new AddItemWindow { Owner = this };
 
-            // Передаем список всех комнат
             dialog.SetRooms(_viewModel.Rooms.ToList());
 
-            // Если выбрана комната, устанавливаем её по умолчанию
             if (_viewModel.SelectedRoom != null)
             {
-                // Устанавливаем контейнеры для выбранной комнаты
                 dialog.SetContainers(_viewModel.SelectedRoom.Containers.ToList());
+                dialog.PreselectRoomAndContainer(_viewModel.SelectedRoom, _viewModel.SelectedContainer);
             }
 
             if (dialog.ShowDialog() == true)
@@ -398,7 +396,6 @@ namespace _25._04
                 if (dialog.SelectedContainer?.Name == "Нет" || dialog.SelectedContainer?.Id == -1)
                     containerId = null;
 
-                // Используем выбранную в диалоге комнату
                 var roomId = dialog.SelectedRoom?.Id ?? _viewModel.SelectedRoom?.Id;
                 if (roomId.HasValue)
                 {
@@ -452,9 +449,7 @@ namespace _25._04
                 var room = _viewModel.SelectedItem.Room;
                 dialog.SetRooms(_viewModel.Rooms.ToList());
                 dialog.SetContainers(room.Containers.ToList());
-
-                if (_viewModel.SelectedItem.Container != null)
-                    dialog.SelectedContainer = _viewModel.SelectedItem.Container;
+                dialog.PreselectRoomAndContainer(room, _viewModel.SelectedItem.Container);
 
                 if (dialog.ShowDialog() == true)
                 {
