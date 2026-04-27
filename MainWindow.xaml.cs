@@ -390,6 +390,25 @@ namespace _25._04
             public TreeGridNode Parent { get; set; }
             public List<TreeGridNode> Children { get; set; } = new List<TreeGridNode>();
 
+            public Brush RowBackground 
+            {
+                get
+                {
+                    if (Level == 0)
+                        return new SolidColorBrush((Color)ColorConverter.ConvertFromString("#E3F2FD")); // Уровень 0 (Комната): голубой
+
+                    // Чередующиеся контрастные цвета для уровней (1, 2, 3...)
+                    int cycle = (Level - 1) % 3;
+
+                    if (cycle == 0)
+                        return new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FFF8E1")); // Уровень 1 (и 4, 7...): очень светлый желто-оранжевый (янтарный)
+                    else if (cycle == 1)
+                        return new SolidColorBrush((Color)ColorConverter.ConvertFromString("#E8F5E9")); // Уровень 2 (и 5, 8...): очень светлый зеленый
+                    else
+                        return new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FCE4EC")); // Уровень 3 (и 6, 9...): очень светлый розовый
+                }
+            }
+
             public string ExpandIndicator 
             { 
                 get 

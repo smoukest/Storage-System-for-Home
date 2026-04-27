@@ -63,20 +63,15 @@
                     <DataGrid.RowStyle>
                         <Style TargetType="DataGridRow">
                             <Setter Property="Visibility" Value="{Binding IsVisible, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                            <Setter Property="Background" Value="White" />
+                            <Setter Property="Background" Value="{Binding RowBackground}" />
                             <Setter Property="FontWeight" Value="Normal" />
-                            <!-- Добавляем стиль для отмены рамки выделения, чтобы цвет было видно лучше -->
                             <Setter Property="BorderThickness" Value="0"/>
                             <Style.Triggers>
-                                <!-- Цвета по типам элементов -->
-                                <DataTrigger Binding="{Binding ElementType}" Value="Комната">
-                                    <Setter Property="Background" Value="#E3F2FD" />
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding ElementType}" Value="Контейнер">
-                                    <Setter Property="Background" Value="#FFF8E1" />
-                                </DataTrigger>
-                                <!-- Для вещей (ElementType="Вещь") мы не используем AlternationIndex, так как у нас в одном списке хранятся скрытые и видимые элементы -->
                                 <Trigger Property="IsMouseOver" Value="True">
+                                    <!-- Затемняем текущий цвет фона на полупрозрачный слой -->
+                                    <Setter Property="Foreground" Value="Black" />
+                                    <!-- Мы не можем легко наложить прозрачность через триггер, 
+                                         поэтому пускай при наведении строка просто становится стандартно синеватой -->
                                     <Setter Property="Background" Value="#E8E8E8" />
                                 </Trigger>
                                 <Trigger Property="IsSelected" Value="True">
