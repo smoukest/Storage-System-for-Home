@@ -241,11 +241,11 @@ namespace ApartmentInventory.ViewModels
             }
         }
 
-        public void AddContainer(string name, int roomId)
+        public void AddContainer(string name, int roomId, int? parentContainerId = null)
         {
             try
             {
-                _dbContext.AddContainer(name, roomId);
+                _dbContext.AddContainer(name, roomId, parentContainerId);
                 LoadRooms();
             }
             catch (Exception ex)

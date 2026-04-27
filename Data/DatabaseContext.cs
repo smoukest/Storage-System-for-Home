@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Collections.ObjectModel;
 using Npgsql;
 using ApartmentInventory.Models;
@@ -71,26 +72,71 @@ namespace ApartmentInventory.Data
 
             try
             {
+                var allContainers = new System.Collections.Generic.List<Container>();
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
                     connection.Open();
                     using (var cmd = connection.CreateCommand())
                     {
-                        cmd.CommandText = "SELECT id, name, room_id FROM Containers WHERE room_id = @roomId ORDER BY name";
+                        // Пытаемся выбрать parent_container_id, если столбец существует, иначе выбираться не будет
+                        // Для совместимости мы сначала проверяем, есть ли столбец
+                        bool hasParentId = false;
+                        using (var checkCmd = connection.CreateCommand())
+                        {
+                            checkCmd.CommandText = "SELECT column_name FROM information_schema.columns WHERE table_name='containers' AND column_name='parent_container_id';";
+                            var result = checkCmd.ExecuteScalar();
+                            if (result != null) hasParentId = true;
+                        }
+
+                        if (hasParentId)
+                        {
+                            cmd.CommandText = "SELECT id, name, room_id, parent_container_id FROM Containers WHERE room_id = @roomId ORDER BY name";
+                        }
+                        else
+                        {
+                            cmd.CommandText = "SELECT id, name, room_id FROM Containers WHERE room_id = @roomId ORDER BY name";
+                        }
+
                         cmd.Parameters.AddWithValue("@roomId", room.Id);
                         using (var reader = cmd.ExecuteReader())
                         {
                             while (reader.Read())
                             {
-                                room.Containers.Add(new Container
+                                int? parentId = null;
+                                if (hasParentId && reader["parent_container_id"] != DBNull.Value)
+                                    parentId = (int)reader["parent_container_id"];
+
+                                allContainers.Add(new Container
                                 {
                                     Id = (int)reader["id"],
                                     Name = (string)reader["name"],
                                     RoomId = (int)reader["room_id"],
+                                    ParentContainerId = parentId,
                                     Room = room
                                 });
                             }
                         }
+                    }
+                }
+
+                // Строим иерархию контейнеров
+                var dict = new System.Collections.Generic.Dictionary<int, Container>();
+                foreach (var c in allContainers)
+                {
+                    dict[c.Id] = c;
+                }
+
+                foreach (var c in Enumerable.Reverse(allContainers)) // Reverse to modify safely or just a normal loop
+                {
+                    if (c.ParentContainerId.HasValue && dict.ContainsKey(c.ParentContainerId.Value))
+                    {
+                        var parent = dict[c.ParentContainerId.Value];
+                        c.ParentContainer = parent;
+                        parent.ChildContainers.Add(c);
+                    }
+                    else
+                    {
+                        room.Containers.Add(c);
                     }
                 }
             }
@@ -252,16 +298,45 @@ namespace ApartmentInventory.Data
             }
         }
 
-        public void AddContainer(string name, int roomId)
+        public void AddContainer(string name, int roomId, int? parentContainerId = null)
         {
             try
             {
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
                     connection.Open();
+
+                    bool hasParentId = false;
+                    using (var checkCmd = connection.CreateCommand())
+                    {
+                        checkCmd.CommandText = "SELECT column_name FROM information_schema.columns WHERE table_name='containers' AND column_name='parent_container_id';";
+                        var result = checkCmd.ExecuteScalar();
+                        if (result != null) hasParentId = true;
+                    }
+
+                    if (!hasParentId && parentContainerId.HasValue)
+                    {
+                        // Добавляем таблицу если нету
+                        using (var alterCmd = connection.CreateCommand())
+                        {
+                            alterCmd.CommandText = "ALTER TABLE Containers ADD COLUMN IF NOT EXISTS parent_container_id INT REFERENCES Containers(id) ON DELETE CASCADE;";
+                            alterCmd.ExecuteNonQuery();
+                        }
+                        hasParentId = true;
+                    }
+
                     using (var cmd = connection.CreateCommand())
                     {
-                        cmd.CommandText = "INSERT INTO Containers (name, room_id) VALUES (@name, @roomId)";
+                        if (hasParentId)
+                        {
+                            cmd.CommandText = "INSERT INTO Containers (name, room_id, parent_container_id) VALUES (@name, @roomId, @parentId)";
+                            cmd.Parameters.AddWithValue("@parentId", parentContainerId.HasValue ? (object)parentContainerId.Value : DBNull.Value);
+                        }
+                        else
+                        {
+                            cmd.CommandText = "INSERT INTO Containers (name, room_id) VALUES (@name, @roomId)";
+                        }
+
                         cmd.Parameters.AddWithValue("@name", name ?? "");
                         cmd.Parameters.AddWithValue("@roomId", roomId);
                         cmd.ExecuteNonQuery();

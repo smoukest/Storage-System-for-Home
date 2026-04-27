@@ -64,38 +64,57 @@ namespace _25._04
                 };
                 _flatNodes.Add(roomNode);
 
-                foreach (var container in room.Containers)
+                // Рекурсивный метод для добавления контейнеров
+                void AddContainerNodes(Container container, TreeGridNode parentNode, int level)
                 {
+                    var indent = new string(' ', level * 4);
                     var containerNode = new TreeGridNode
                     {
                         OriginalItem = container,
-                        Name = $"    📦 {container.Name}",
+                        Name = $"{indent}📦 {container.Name}",
                         ElementType = "Контейнер",
-                        Level = 1,
+                        Level = level,
                         IsExpanded = false,
-                        IsVisible = roomNode.IsExpanded,
-                        Parent = roomNode
+                        IsVisible = parentNode.IsExpanded,
+                        Parent = parentNode
                     };
-                    roomNode.Children.Add(containerNode);
+                    parentNode.Children.Add(containerNode);
                     _flatNodes.Add(containerNode);
 
+                    // Сначала добавляем дочерние контейнеры
+                    foreach (var childContainer in container.ChildContainers)
+                    {
+                        AddContainerNodes(childContainer, containerNode, level + 1);
+                    }
+
+                    // Затем вещи внутри этого контейнера
                     foreach (var item in container.Items)
                     {
+                        var itemIndent = new string(' ', (level + 1) * 4);
                         var itemNode = new TreeGridNode
                         {
                             OriginalItem = item,
-                            Name = $"        📄 {item.Name}",
+                            Name = $"{itemIndent}📄 {item.Name}",
                             ItemType = item.ItemType,
                             Description = item.Description,
                             LocationInRoom = item.LocationInRoom,
                             Container = container,
                             ElementType = "Вещь",
-                            Level = 2,
+                            Level = level + 1,
                             IsVisible = containerNode.IsExpanded,
                             Parent = containerNode
                         };
                         containerNode.Children.Add(itemNode);
                         _flatNodes.Add(itemNode);
+                    }
+                }
+
+                // Добавляем только корневые контейнеры
+                foreach (var container in room.Containers)
+                {
+                    if (container.ParentContainerId == null)
+                    {
+                        AddContainerNodes(container, roomNode, 1);
                     }
                 }
 
@@ -132,6 +151,7 @@ namespace _25._04
                     UpdateVisibility(node);
                     ItemsDataGrid.ItemsSource = null;
                     ItemsDataGrid.ItemsSource = _flatNodes;
+                    CheckAllExpandedState();
                 }
 
                 if (node.OriginalItem is Room room)
@@ -158,6 +178,27 @@ namespace _25._04
                     InfoTextBlock.Text = $"Вещь: {item.Name} | Вид: {item.ItemType} | Контейнер: {container_name} | Местоположение: {location} | Описание: {item.Description}";
                 }
             }
+        }
+
+        private void CheckAllExpandedState()
+        {
+            if (_flatNodes == null || _flatNodes.Count == 0) return;
+
+            bool allExpanded = true;
+            foreach (var node in _flatNodes)
+            {
+                if ((node.ElementType == "Комната" || node.ElementType == "Контейнер") && node.HasChildren)
+                {
+                    if (!node.IsExpanded)
+                    {
+                        allExpanded = false;
+                        break;
+                    }
+                }
+            }
+
+            _isExpanded = allExpanded;
+            ExpandAllButton.Content = _isExpanded ? "↕ Скрыть все" : "↕ Раскрыть все";
         }
 
         private void UpdateVisibility(TreeGridNode parentNode)
@@ -223,7 +264,8 @@ namespace _25._04
             var dialog = new AddContainerWindow { Owner = this };
             if (dialog.ShowDialog() == true)
             {
-                _viewModel.AddContainer(dialog.ContainerName, _viewModel.SelectedRoom.Id);
+                int? parentContainerId = _viewModel.SelectedContainer?.Id;
+                _viewModel.AddContainer(dialog.ContainerName, _viewModel.SelectedRoom.Id, parentContainerId);
                 RefreshTreeView();
             }
         }
