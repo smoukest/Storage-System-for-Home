@@ -42,14 +42,62 @@ namespace _25._04
         }
 
         private List<TreeGridNode> _flatNodes = new List<TreeGridNode>();
+        private HashSet<int> _expandedRoomIds = new HashSet<int>();
+        private HashSet<int> _expandedContainerIds = new HashSet<int>();
 
         private void RefreshTreeView()
         {
             RefreshDataGrid();
         }
 
+        private void SaveExpandedState()
+        {
+            _expandedRoomIds.Clear();
+            _expandedContainerIds.Clear();
+
+            foreach (var node in _flatNodes)
+            {
+                if (node.IsExpanded)
+                {
+                    if (node.ElementType == "Комната" && node.OriginalItem is Room room)
+                    {
+                        _expandedRoomIds.Add(room.Id);
+                    }
+                    else if (node.ElementType == "Контейнер" && node.OriginalItem is Container container)
+                    {
+                        _expandedContainerIds.Add(container.Id);
+                    }
+                }
+            }
+        }
+
+        private void RestoreExpandedState()
+        {
+            foreach (var node in _flatNodes)
+            {
+                if (node.ElementType == "Комната" && node.OriginalItem is Room room)
+                {
+                    if (_expandedRoomIds.Contains(room.Id))
+                    {
+                        node.IsExpanded = true;
+                        UpdateVisibility(node);
+                    }
+                }
+                else if (node.ElementType == "Контейнер" && node.OriginalItem is Container container)
+                {
+                    if (_expandedContainerIds.Contains(container.Id))
+                    {
+                        node.IsExpanded = true;
+                        UpdateVisibility(node);
+                    }
+                }
+            }
+        }
+
         private void RefreshDataGrid()
         {
+            SaveExpandedState();
+
             _flatNodes.Clear();
             foreach (var room in _viewModel.Rooms)
             {
@@ -137,6 +185,11 @@ namespace _25._04
             }
             ItemsDataGrid.ItemsSource = null;
             ItemsDataGrid.ItemsSource = _flatNodes;
+
+            RestoreExpandedState();
+            ItemsDataGrid.ItemsSource = null;
+            ItemsDataGrid.ItemsSource = _flatNodes;
+            CheckAllExpandedState();
         }
 
         private bool _ignoreNextSelectionChange = false;
@@ -362,17 +415,37 @@ namespace _25._04
 
         private void AddContainerButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_viewModel.SelectedRoom == null)
+            Room targetRoom = null;
+            Container parentContainer = null;
+
+            if (ItemsDataGrid.SelectedItem is TreeGridNode selectedNode)
             {
-                MessageBox.Show("Пожалуйста, выберите комнату");
+                if (selectedNode.OriginalItem is Room room)
+                {
+                    targetRoom = room;
+                }
+                else if (selectedNode.OriginalItem is Container container)
+                {
+                    parentContainer = container;
+                    targetRoom = container.Room; // Достаем комнату из контейнера
+                }
+            }
+            else
+            {
+                targetRoom = _viewModel.SelectedRoom;
+                parentContainer = _viewModel.SelectedContainer;
+            }
+
+            if (targetRoom == null)
+            {
+                MessageBox.Show("Пожалуйста, выберите комнату или контейнер для добавления.");
                 return;
             }
 
             var dialog = new AddContainerWindow { Owner = this };
             if (dialog.ShowDialog() == true)
             {
-                int? parentContainerId = _viewModel.SelectedContainer?.Id;
-                _viewModel.AddContainer(dialog.ContainerName, _viewModel.SelectedRoom.Id, parentContainerId);
+                _viewModel.AddContainer(dialog.ContainerName, targetRoom.Id, parentContainer?.Id);
                 RefreshTreeView();
             }
         }
@@ -383,10 +456,31 @@ namespace _25._04
 
             dialog.SetRooms(_viewModel.Rooms.ToList());
 
-            if (_viewModel.SelectedRoom != null)
+            Room targetRoom = null;
+            Container targetContainer = null;
+
+            if (ItemsDataGrid.SelectedItem is TreeGridNode selectedNode)
             {
-                dialog.SetContainers(_viewModel.SelectedRoom.Containers.ToList());
-                dialog.PreselectRoomAndContainer(_viewModel.SelectedRoom, _viewModel.SelectedContainer);
+                if (selectedNode.OriginalItem is Room room)
+                {
+                    targetRoom = room;
+                }
+                else if (selectedNode.OriginalItem is Container container)
+                {
+                    targetContainer = container;
+                    targetRoom = container.Room; // Достаем комнату из контейнера
+                }
+            }
+            else
+            {
+                targetRoom = _viewModel.SelectedRoom;
+                targetContainer = _viewModel.SelectedContainer;
+            }
+
+            if (targetRoom != null)
+            {
+                dialog.SetContainers(targetRoom.Containers.ToList());
+                dialog.PreselectRoomAndContainer(targetRoom, targetContainer);
             }
 
             if (dialog.ShowDialog() == true)
@@ -395,7 +489,7 @@ namespace _25._04
                 if (dialog.SelectedContainer?.Name == "Нет" || dialog.SelectedContainer?.Id == -1)
                     containerId = null;
 
-                var roomId = dialog.SelectedRoom?.Id ?? _viewModel.SelectedRoom?.Id;
+                var roomId = dialog.SelectedRoom?.Id ?? targetRoom?.Id;
                 if (roomId.HasValue)
                 {
                     _viewModel.AddItem(
@@ -417,38 +511,44 @@ namespace _25._04
 
         private void EditButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_viewModel.SelectedRoom != null)
+            if (!(ItemsDataGrid.SelectedItem is TreeGridNode selectedNode))
+            {
+                MessageBox.Show("Пожалуйста, выберите элемент для редактирования");
+                return;
+            }
+
+            if (selectedNode.OriginalItem is Room room)
             {
                 var dialog = new AddRoomWindow { Owner = this, Title = "Редактировать комнату" };
-                dialog.RoomName = _viewModel.SelectedRoom.Name;
+                dialog.RoomName = room.Name;
                 if (dialog.ShowDialog() == true)
                 {
-                    _viewModel.UpdateRoom(_viewModel.SelectedRoom.Id, dialog.RoomName);
+                    _viewModel.UpdateRoom(room.Id, dialog.RoomName);
                     RefreshTreeView();
                 }
             }
-            else if (_viewModel.SelectedContainer != null)
+            else if (selectedNode.OriginalItem is Container container)
             {
                 var dialog = new AddContainerWindow { Owner = this, Title = "Редактировать контейнер" };
-                dialog.ContainerName = _viewModel.SelectedContainer.Name;
+                dialog.ContainerName = container.Name;
                 if (dialog.ShowDialog() == true)
                 {
-                    _viewModel.UpdateContainer(_viewModel.SelectedContainer.Id, dialog.ContainerName);
+                    _viewModel.UpdateContainer(container.Id, dialog.ContainerName);
                     RefreshTreeView();
                 }
             }
-            else if (_viewModel.SelectedItem != null)
+            else if (selectedNode.OriginalItem is Item item)
             {
                 var dialog = new AddItemWindow { Owner = this, Title = "Редактировать вещь" };
-                dialog.ItemName = _viewModel.SelectedItem.Name;
-                dialog.ItemType = _viewModel.SelectedItem.ItemType;
-                dialog.Description = _viewModel.SelectedItem.Description;
-                dialog.LocationInRoom = _viewModel.SelectedItem.LocationInRoom;
+                dialog.ItemName = item.Name;
+                dialog.ItemType = item.ItemType;
+                dialog.Description = item.Description;
+                dialog.LocationInRoom = item.LocationInRoom;
 
-                var room = _viewModel.SelectedItem.Room;
+                var parentRoom = item.Room;
                 dialog.SetRooms(_viewModel.Rooms.ToList());
-                dialog.SetContainers(room.Containers.ToList());
-                dialog.PreselectRoomAndContainer(room, _viewModel.SelectedItem.Container);
+                dialog.SetContainers(parentRoom.Containers.ToList());
+                dialog.PreselectRoomAndContainer(parentRoom, item.Container);
 
                 if (dialog.ShowDialog() == true)
                 {
@@ -456,9 +556,9 @@ namespace _25._04
                     if (dialog.SelectedContainer?.Name == "Нет" || dialog.SelectedContainer?.Id == -1)
                         containerId = null;
 
-                    var roomId = dialog.SelectedRoom?.Id ?? room.Id;
+                    var roomId = dialog.SelectedRoom?.Id ?? parentRoom.Id;
                     _viewModel.UpdateItem(
-                        _viewModel.SelectedItem.Id,
+                        item.Id,
                         dialog.ItemName,
                         dialog.ItemType,
                         dialog.Description,
@@ -469,41 +569,42 @@ namespace _25._04
                     RefreshTreeView();
                 }
             }
-            else
-            {
-                MessageBox.Show("Пожалуйста, выберите элемент для редактирования");
-            }
         }
 
         private void DeleteButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_viewModel.SelectedRoom != null)
+            if (!(ItemsDataGrid.SelectedItem is TreeGridNode selectedNode))
             {
-                if (MessageBox.Show($"Удалить комнату '{_viewModel.SelectedRoom.Name}'?", "Подтверждение", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                MessageBox.Show("Пожалуйста, выберите элемент для удаления");
+                return;
+            }
+
+            if (selectedNode.OriginalItem is Room room)
+            {
+                if (MessageBox.Show($"Удалить комнату '{room.Name}'?", "Подтверждение", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
                 {
+                    _viewModel.SelectedRoom = room;
                     _viewModel.DeleteRoomCommand.Execute(null);
                     RefreshTreeView();
                 }
             }
-            else if (_viewModel.SelectedContainer != null)
+            else if (selectedNode.OriginalItem is Container container)
             {
-                if (MessageBox.Show($"Удалить контейнер '{_viewModel.SelectedContainer.Name}'?", "Подтверждение", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                if (MessageBox.Show($"Удалить контейнер '{container.Name}'?", "Подтверждение", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
                 {
+                    _viewModel.SelectedContainer = container;
                     _viewModel.DeleteContainerCommand.Execute(null);
                     RefreshTreeView();
                 }
             }
-            else if (_viewModel.SelectedItem != null)
+            else if (selectedNode.OriginalItem is Item item)
             {
-                if (MessageBox.Show($"Удалить вещь '{_viewModel.SelectedItem.Name}'?", "Подтверждение", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                if (MessageBox.Show($"Удалить вещь '{item.Name}'?", "Подтверждение", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
                 {
+                    _viewModel.SelectedItem = item;
                     _viewModel.DeleteItemCommand.Execute(null);
                     RefreshTreeView();
                 }
-            }
-            else
-            {
-                MessageBox.Show("Пожалуйста, выберите элемент для удаления");
             }
         }
 

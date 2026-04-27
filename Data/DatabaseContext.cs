@@ -196,11 +196,8 @@ namespace ApartmentInventory.Data
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
                     connection.Open();
-                    // Загружаем предметы в контейнерах
-                    foreach (var container in room.Containers)
-                    {
-                        LoadItemsForContainer(container);
-                    }
+                    // Загружаем предметы во всех контейнерах рекурсивно
+                    LoadItemsForContainersRecursively(room.Containers);
 
                     // Загружаем предметы БЕЗ контейнера (room.Items) - теперь с фильтрацией по room_id
                     using (var cmd = connection.CreateCommand())
@@ -231,6 +228,20 @@ namespace ApartmentInventory.Data
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error loading room items: {ex.Message}");
+            }
+        }
+
+        private void LoadItemsForContainersRecursively(System.Collections.Generic.IEnumerable<Container> containers)
+        {
+            if (containers == null) return;
+
+            foreach (var container in containers)
+            {
+                LoadItemsForContainer(container);
+                if (container.ChildContainers != null && container.ChildContainers.Count > 0)
+                {
+                    LoadItemsForContainersRecursively(container.ChildContainers);
+                }
             }
         }
 

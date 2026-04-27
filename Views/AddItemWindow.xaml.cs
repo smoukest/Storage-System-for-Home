@@ -55,15 +55,52 @@ namespace ApartmentInventory.Views
                 if (matchingRoom != null)
                 {
                     RoomComboBox.SelectedItem = matchingRoom;
+
+                    // Обновляем список контейнеров перед выбором контейнера.
+                    // Вызов RoomComboBox.SelectedItem провоцирует вызов RoomComboBox_SelectionChanged
+                    // Но на всякий случай устанавливаем напрямую. 
+                    var roomContainers = matchingRoom.Containers?.ToList() ?? new List<Container>();
+                    SetContainers(roomContainers);
                 }
             }
 
             if (container != null && _containers != null)
             {
+                // Ищем рекурсивно по id, так как список контейнеров комнаты может не иметь плоской структуры,
+                // либо контейнер может лежать не напрямую в комнате, а в другом контейнере. 
+                // Но у нас SetContainers получает только прямые контейнеры, 
+                // поэтому нужно собрать все контейнеры комнаты в плоский список.
+                var allRoomContainers = GetAllContainersInRoom(room ?? container.Room);
+                SetContainers(allRoomContainers);
+
                 var matchingContainer = ContainerComboBox.Items.Cast<Container>().FirstOrDefault(c => c.Id == container.Id);
                 if (matchingContainer != null)
                 {
                     ContainerComboBox.SelectedItem = matchingContainer;
+                }
+            }
+        }
+
+        private List<Container> GetAllContainersInRoom(Room room)
+        {
+            var result = new List<Container>();
+            if (room?.Containers == null) return result;
+
+            foreach (var container in room.Containers)
+            {
+                AddContainerAndChildren(container, result);
+            }
+            return result;
+        }
+
+        private void AddContainerAndChildren(Container container, List<Container> list)
+        {
+            list.Add(container);
+            if (container.ChildContainers != null)
+            {
+                foreach (var child in container.ChildContainers)
+                {
+                    AddContainerAndChildren(child, list);
                 }
             }
         }
@@ -73,9 +110,9 @@ namespace ApartmentInventory.Views
             var selectedRoom = RoomComboBox.SelectedItem as Room;
             if (selectedRoom != null)
             {
-                // Обновляем список контейнеров в зависимости от выбранной комнаты
-                var roomContainers = selectedRoom.Containers?.ToList() ?? new List<Container>();
-                SetContainers(roomContainers);
+                // Обновляем список контейнеров в зависимости от выбранной комнаты (включая вложенные)
+                var allContainers = GetAllContainersInRoom(selectedRoom);
+                SetContainers(allContainers);
             }
         }
 
