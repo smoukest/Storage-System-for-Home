@@ -50,10 +50,10 @@ namespace ApartmentInventory.Views
         private void RoomComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             var selectedRoom = RoomComboBox.SelectedItem as Room;
-            if (selectedRoom != null && _containers != null)
+            if (selectedRoom != null)
             {
                 // Обновляем список контейнеров в зависимости от выбранной комнаты
-                var roomContainers = selectedRoom.Containers.ToList();
+                var roomContainers = selectedRoom.Containers?.ToList() ?? new List<Container>();
                 SetContainers(roomContainers);
             }
         }
@@ -75,6 +75,11 @@ namespace ApartmentInventory.Views
 
             DialogResult = true;
             Close();
+        }
+
+        private void ContainerComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+
         }
     }
 }

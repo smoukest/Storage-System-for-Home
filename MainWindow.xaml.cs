@@ -41,87 +41,153 @@ namespace _25._04
             RefreshTreeView();
         }
 
+        private List<TreeGridNode> _flatNodes = new List<TreeGridNode>();
+
         private void RefreshTreeView()
         {
-            ItemsTreeView.Items.Clear();
+            RefreshDataGrid();
+        }
+
+        private void RefreshDataGrid()
+        {
+            _flatNodes.Clear();
             foreach (var room in _viewModel.Rooms)
             {
-                var roomItem = CreateRoomTreeItem(room);
-                ItemsTreeView.Items.Add(roomItem);
-            }
-        }
-
-        private TreeViewItem CreateRoomTreeItem(Room room)
-        {
-            var roomItem = new TreeViewItem
-            {
-                Header = $"🏠 {room.Name}",
-                Tag = room,
-                IsExpanded = false
-            };
-
-            // Добавляем коробки
-            foreach (var container in room.Containers)
-            {
-                var containerItem = new TreeViewItem
+                var roomNode = new TreeGridNode
                 {
-                    Header = $"📦 {container.Name}",
-                    Tag = container
+                    OriginalItem = room,
+                    Name = $"🏠 {room.Name}",
+                    ElementType = "Комната",
+                    Level = 0,
+                    IsExpanded = false,
+                    IsVisible = true
                 };
+                _flatNodes.Add(roomNode);
 
-                foreach (var item in container.Items)
+                foreach (var container in room.Containers)
                 {
-                    var itemNode = new TreeViewItem
+                    var containerNode = new TreeGridNode
                     {
-                        Header = $"📄 {item.Name} ({item.ItemType})",
-                        Tag = item
+                        OriginalItem = container,
+                        Name = $"    📦 {container.Name}",
+                        ElementType = "Контейнер",
+                        Level = 1,
+                        IsExpanded = false,
+                        IsVisible = roomNode.IsExpanded,
+                        Parent = roomNode
                     };
-                    containerItem.Items.Add(itemNode);
+                    roomNode.Children.Add(containerNode);
+                    _flatNodes.Add(containerNode);
+
+                    foreach (var item in container.Items)
+                    {
+                        var itemNode = new TreeGridNode
+                        {
+                            OriginalItem = item,
+                            Name = $"        📄 {item.Name}",
+                            ItemType = item.ItemType,
+                            Description = item.Description,
+                            LocationInRoom = item.LocationInRoom,
+                            Container = container,
+                            ElementType = "Вещь",
+                            Level = 2,
+                            IsVisible = containerNode.IsExpanded,
+                            Parent = containerNode
+                        };
+                        containerNode.Children.Add(itemNode);
+                        _flatNodes.Add(itemNode);
+                    }
                 }
 
-                roomItem.Items.Add(containerItem);
-            }
-
-            // Добавляем вещи без контейнера
-            foreach (var item in room.Items)
-            {
-                var itemNode = new TreeViewItem
+                foreach (var item in room.Items)
                 {
-                    Header = $"📄 {item.Name} ({item.ItemType})",
-                    Tag = item
-                };
-                roomItem.Items.Add(itemNode);
+                    var itemNode = new TreeGridNode
+                    {
+                        OriginalItem = item,
+                        Name = $"    📄 {item.Name}",
+                        ItemType = item.ItemType,
+                        Description = item.Description,
+                        LocationInRoom = item.LocationInRoom,
+                        Container = null,
+                        ElementType = "Вещь",
+                        Level = 1,
+                        IsVisible = roomNode.IsExpanded,
+                        Parent = roomNode
+                    };
+                    roomNode.Children.Add(itemNode);
+                    _flatNodes.Add(itemNode);
+                }
             }
-
-            return roomItem;
+            ItemsDataGrid.ItemsSource = null;
+            ItemsDataGrid.ItemsSource = _flatNodes;
         }
 
-        private void ItemsTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+        private void ItemsDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            var selectedItem = ItemsTreeView.SelectedItem as TreeViewItem;
-            if (selectedItem?.Tag is Room room)
+            if (ItemsDataGrid.SelectedItem is TreeGridNode node)
             {
-                _viewModel.SelectedRoom = room;
-                _viewModel.SelectedContainer = null;
-                _viewModel.SelectedItem = null;
-                InfoTextBlock.Text = $"Комната: {room.Name}";
+                if (node.ElementType == "Комната" || node.ElementType == "Контейнер")
+                {
+                    node.IsExpanded = !node.IsExpanded;
+                    UpdateVisibility(node);
+                    ItemsDataGrid.ItemsSource = null;
+                    ItemsDataGrid.ItemsSource = _flatNodes;
+                }
+
+                if (node.OriginalItem is Room room)
+                {
+                    _viewModel.SelectedRoom = room;
+                    _viewModel.SelectedContainer = null;
+                    _viewModel.SelectedItem = null;
+                    InfoTextBlock.Text = $"Комната: {room.Name}";
+                }
+                else if (node.OriginalItem is Container container)
+                {
+                    _viewModel.SelectedContainer = container;
+                    _viewModel.SelectedRoom = container.Room;
+                    _viewModel.SelectedItem = null;
+                    InfoTextBlock.Text = $"Контейнер: {container.Name} (в комнате: {container.Room.Name})";
+                }
+                else if (node.OriginalItem is Item item)
+                {
+                    _viewModel.SelectedItem = item;
+                    _viewModel.SelectedRoom = item.Room;
+                    _viewModel.SelectedContainer = item.Container;
+                    var location = string.IsNullOrEmpty(item.LocationInRoom) ? "не указано" : item.LocationInRoom;
+                    var container_name = item.Container?.Name ?? "нет";
+                    InfoTextBlock.Text = $"Вещь: {item.Name} | Вид: {item.ItemType} | Контейнер: {container_name} | Местоположение: {location} | Описание: {item.Description}";
+                }
             }
-            else if (selectedItem?.Tag is Container container)
+        }
+
+        private void UpdateVisibility(TreeGridNode parentNode)
+        {
+            foreach (var child in parentNode.Children)
             {
-                _viewModel.SelectedContainer = container;
-                _viewModel.SelectedRoom = container.Room;
-                _viewModel.SelectedItem = null;
-                InfoTextBlock.Text = $"Контейнер: {container.Name} (в комнате: {container.Room.Name})";
+                child.IsVisible = parentNode.IsExpanded;
+                if (!parentNode.IsExpanded && child.IsExpanded)
+                {
+                    child.IsExpanded = false;
+                }
+                UpdateVisibility(child);
             }
-            else if (selectedItem?.Tag is Item item)
-            {
-                _viewModel.SelectedItem = item;
-                _viewModel.SelectedRoom = item.Room;
-                _viewModel.SelectedContainer = item.Container;
-                var location = string.IsNullOrEmpty(item.LocationInRoom) ? "не указано" : item.LocationInRoom;
-                var container_name = item.Container?.Name ?? "нет";
-                InfoTextBlock.Text = $"Вещь: {item.Name} | Вид: {item.ItemType} | Контейнер: {container_name} | Местоположение: {location} | Описание: {item.Description}";
-            }
+        }
+
+        public class TreeGridNode
+        {
+            public object OriginalItem { get; set; }
+            public string Name { get; set; }
+            public string ItemType { get; set; }
+            public string Description { get; set; }
+            public string LocationInRoom { get; set; }
+            public Container Container { get; set; }
+            public string ElementType { get; set; }
+            public int Level { get; set; }
+            public bool IsExpanded { get; set; }
+            public bool IsVisible { get; set; }
+            public bool HasChildren => Children != null && Children.Count > 0;
+            public TreeGridNode Parent { get; set; }
+            public List<TreeGridNode> Children { get; set; } = new List<TreeGridNode>();
         }
 
         private void AddRoomButton_Click(object sender, RoutedEventArgs e)
@@ -283,6 +349,30 @@ namespace _25._04
             {
                 MessageBox.Show("Пожалуйста, выберите элемент для удаления");
             }
+        }
+
+        private bool _isExpanded = false;
+
+        private void ExpandAllButton_Click(object sender, RoutedEventArgs e)
+        {
+            _isExpanded = !_isExpanded;
+            var button = sender as Button;
+            if (button != null)
+            {
+                button.Content = _isExpanded ? "↕ Скрыть все" : "↕ Раскрыть все";
+            }
+
+            foreach (var node in _flatNodes)
+            {
+                if (node.ElementType == "Комната" || node.ElementType == "Контейнер")
+                {
+                    node.IsExpanded = _isExpanded;
+                    UpdateVisibility(node);
+                }
+            }
+
+            ItemsDataGrid.ItemsSource = null;
+            ItemsDataGrid.ItemsSource = _flatNodes;
         }
 
         private void RefreshButton_Click(object sender, RoutedEventArgs e)

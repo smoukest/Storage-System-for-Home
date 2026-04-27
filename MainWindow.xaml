@@ -5,9 +5,12 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:_25._04"
         mc:Ignorable="d"
-        Title="Учет вещей в квартире" Height="600" Width="900" 
+        Title="Учет вещей в квартире" Height="600" Width="1050" MinWidth="1050" MinHeight="500"
         WindowStartupLocation="CenterScreen"
         Background="#F5F5F5">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+    </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -31,14 +34,50 @@
                     Background="#F44336" Foreground="White" FontSize="12" Cursor="Hand" Margin="5"/>
             <Button Content="🔄 Обновить" Width="100" Height="40" Click="RefreshButton_Click" 
                     Background="#9C27B0" Foreground="White" FontSize="12" Cursor="Hand" Margin="5"/>
+            <Separator Width="1" Margin="10,0"/>
+            <Button Content="↕ Раскрыть все" Width="120" Height="40" Click="ExpandAllButton_Click" 
+                    Background="#607D8B" Foreground="White" FontSize="12" Cursor="Hand" Margin="5"/>
             </StackPanel>
         </Border>
 
-        <!-- TreeView с данными -->
-        <Border Grid.Row="1" Margin="15" Background="White" BorderThickness="1" BorderBrush="#CCCCCC">
-            <TreeView x:Name="ItemsTreeView" Margin="10" 
-                      SelectedItemChanged="ItemsTreeView_SelectedItemChanged"/>
-        </Border>
+        <!-- Убрано TreeView, добавлен DataGrid для отображения предметов и Списки для комнат/контейнеров -->
+        <Grid Grid.Row="1" Margin="15">
+            <!-- Дерево-таблица (DataGrid) со скрывающейся иерархией -->
+            <Border Background="White" BorderThickness="1" BorderBrush="#CCCCCC">
+                <DataGrid x:Name="ItemsDataGrid" AutoGenerateColumns="False" IsReadOnly="True" 
+                          SelectionMode="Single" SelectionChanged="ItemsDataGrid_SelectionChanged"
+                          CanUserAddRows="False" CanUserDeleteRows="False" RowHeight="30"
+                          GridLinesVisibility="All" HorizontalGridLinesBrush="Black" VerticalGridLinesBrush="Black"
+                          HeadersVisibility="Column" AlternatingRowBackground="#F0F0F0" RowBackground="#FFFFFF">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Название" Binding="{Binding Name}" Width="250"/>
+                        <DataGridTextColumn Header="Тип" Binding="{Binding ItemType}" Width="150"/>
+                        <DataGridTextColumn Header="Местоположение" Binding="{Binding LocationInRoom}" Width="150"/>
+                        <DataGridTextColumn Header="Контейнер/Комната" Binding="{Binding Container.Name}" Width="150"/>
+                        <DataGridTextColumn Header="Описание" Binding="{Binding Description}" Width="200"/>
+                        <DataGridTextColumn Header="Тип элемента" Binding="{Binding ElementType}" Width="*"/>
+                    </DataGrid.Columns>
+
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow">
+                            <Setter Property="Visibility" Value="{Binding IsVisible, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                            <Setter Property="Background" Value="White" />
+                            <Setter Property="FontWeight" Value="Normal" />
+                            <Style.Triggers>
+                                <Trigger Property="AlternationIndex" Value="1">
+                                    <Setter Property="Background" Value="#F0F0F0" />
+                                </Trigger>
+                                <!-- Выделение для комнат и контейнеров, содержащих элементы -->
+                                <DataTrigger Binding="{Binding HasChildren}" Value="True">
+                                    <Setter Property="FontWeight" Value="Bold" />
+                                    <Setter Property="Background" Value="#E3F2FD" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.RowStyle>
+                </DataGrid>
+            </Border>
+        </Grid>
 
         <!-- Нижняя панель с информацией -->
         <Border Grid.Row="2" Margin="15" Background="White" Padding="15">
