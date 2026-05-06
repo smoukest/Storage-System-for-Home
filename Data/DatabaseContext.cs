@@ -78,24 +78,19 @@ namespace ApartmentInventory.Data
                     connection.Open();
                     using (var cmd = connection.CreateCommand())
                     {
-                        // Пытаемся выбрать parent_container_id, если столбец существует, иначе выбираться не будет
-                        // Для совместимости мы сначала проверяем, есть ли столбец
-                        bool hasParentId = false;
-                        using (var checkCmd = connection.CreateCommand())
+                        // Обновляем схему таблицы при необходимости
+                        using (var alterCmd = connection.CreateCommand())
                         {
-                            checkCmd.CommandText = "SELECT column_name FROM information_schema.columns WHERE table_name='containers' AND column_name='parent_container_id';";
-                            var result = checkCmd.ExecuteScalar();
-                            if (result != null) hasParentId = true;
+                            alterCmd.CommandText = @"
+                                ALTER TABLE Containers ADD COLUMN IF NOT EXISTS parent_container_id INT REFERENCES Containers(id) ON DELETE CASCADE;
+                                ALTER TABLE Containers ADD COLUMN IF NOT EXISTS type VARCHAR(50);
+                                ALTER TABLE Containers ADD COLUMN IF NOT EXISTS description TEXT;
+                                ALTER TABLE Containers ADD COLUMN IF NOT EXISTS location_in_room VARCHAR(100);
+                            ";
+                            alterCmd.ExecuteNonQuery();
                         }
 
-                        if (hasParentId)
-                        {
-                            cmd.CommandText = "SELECT id, name, room_id, parent_container_id FROM Containers WHERE room_id = @roomId ORDER BY name";
-                        }
-                        else
-                        {
-                            cmd.CommandText = "SELECT id, name, room_id FROM Containers WHERE room_id = @roomId ORDER BY name";
-                        }
+                        cmd.CommandText = "SELECT id, name, type, description, location_in_room, room_id, parent_container_id, image_data FROM Containers WHERE room_id = @roomId ORDER BY name";
 
                         cmd.Parameters.AddWithValue("@roomId", room.Id);
                         using (var reader = cmd.ExecuteReader())
@@ -103,13 +98,24 @@ namespace ApartmentInventory.Data
                             while (reader.Read())
                             {
                                 int? parentId = null;
-                                if (hasParentId && reader["parent_container_id"] != DBNull.Value)
+                                if (reader["parent_container_id"] != DBNull.Value)
                                     parentId = (int)reader["parent_container_id"];
+
+                                byte[] imageData = null;
+                                if (reader.GetSchemaTable().Rows.Cast<System.Data.DataRow>().Any(r => (string)r["ColumnName"] == "image_data"))
+                                {
+                                    if (reader["image_data"] != DBNull.Value)
+                                        imageData = (byte[])reader["image_data"];
+                                }
 
                                 allContainers.Add(new Container
                                 {
                                     Id = (int)reader["id"],
                                     Name = (string)reader["name"],
+                                    ItemType = reader["type"] == DBNull.Value ? string.Empty : (string)reader["type"],
+                                    Description = reader["description"] == DBNull.Value ? string.Empty : (string)reader["description"],
+                                    LocationInRoom = reader["location_in_room"] == DBNull.Value ? string.Empty : (string)reader["location_in_room"],
+                                    ImageData = imageData,
                                     RoomId = (int)reader["room_id"],
                                     ParentContainerId = parentId,
                                     Room = room
@@ -157,13 +163,21 @@ namespace ApartmentInventory.Data
                     connection.Open();
                     using (var cmd = connection.CreateCommand())
                     {
-                        cmd.CommandText = "SELECT id, name, type, description, location_in_room, container_id, room_id FROM Items WHERE container_id = @containerId ORDER BY name";
+                        cmd.CommandText = "SELECT id, name, type, description, location_in_room, container_id, room_id, image_data FROM Items WHERE container_id = @containerId ORDER BY name";
                         cmd.Parameters.AddWithValue("@containerId", container.Id);
                         using (var reader = cmd.ExecuteReader())
                         {
                             while (reader.Read())
                             {
                                 var roomId = reader["room_id"];
+
+                                byte[] imageData = null;
+                                if (reader.GetSchemaTable().Rows.Cast<System.Data.DataRow>().Any(r => (string)r["ColumnName"] == "image_data"))
+                                {
+                                    if (reader["image_data"] != DBNull.Value)
+                                        imageData = (byte[])reader["image_data"];
+                                }
+
                                 container.Items.Add(new Item
                                 {
                                     Id = (int)reader["id"],
@@ -171,6 +185,7 @@ namespace ApartmentInventory.Data
                                     ItemType = (string)reader["type"],
                                     Description = (string)reader["description"],
                                     LocationInRoom = (string)reader["location_in_room"],
+                                    ImageData = imageData,
                                     ContainerId = (int)reader["container_id"],
                                     RoomId = roomId == DBNull.Value ? 0 : (int)roomId,
                                     Container = container,
@@ -202,13 +217,20 @@ namespace ApartmentInventory.Data
                     // Загружаем предметы БЕЗ контейнера (room.Items) - теперь с фильтрацией по room_id
                     using (var cmd = connection.CreateCommand())
                     {
-                        cmd.CommandText = "SELECT id, name, type, description, location_in_room, container_id, room_id FROM Items " +
+                        cmd.CommandText = "SELECT id, name, type, description, location_in_room, container_id, room_id, image_data FROM Items " +
                                         "WHERE container_id IS NULL AND room_id = @roomId ORDER BY name";
                         cmd.Parameters.AddWithValue("@roomId", room.Id);
                         using (var reader = cmd.ExecuteReader())
                         {
                             while (reader.Read())
                             {
+                                byte[] imageData = null;
+                                if (reader.GetSchemaTable().Rows.Cast<System.Data.DataRow>().Any(r => (string)r["ColumnName"] == "image_data"))
+                                {
+                                    if (reader["image_data"] != DBNull.Value)
+                                        imageData = (byte[])reader["image_data"];
+                                }
+
                                 room.Items.Add(new Item
                                 {
                                     Id = (int)reader["id"],
@@ -216,6 +238,7 @@ namespace ApartmentInventory.Data
                                     ItemType = (string)reader["type"],
                                     Description = (string)reader["description"],
                                     LocationInRoom = (string)reader["location_in_room"],
+                                    ImageData = imageData,
                                     ContainerId = null,
                                     RoomId = room.Id,
                                     Room = room
@@ -309,7 +332,7 @@ namespace ApartmentInventory.Data
             }
         }
 
-        public void AddContainer(string name, int roomId, int? parentContainerId = null)
+        public void AddContainer(string name, string type, string description, string location, int roomId, int? parentContainerId = null, byte[] imageData = null)
         {
             try
             {
@@ -317,39 +340,29 @@ namespace ApartmentInventory.Data
                 {
                     connection.Open();
 
-                    bool hasParentId = false;
-                    using (var checkCmd = connection.CreateCommand())
+                    using (var alterCmd = connection.CreateCommand())
                     {
-                        checkCmd.CommandText = "SELECT column_name FROM information_schema.columns WHERE table_name='containers' AND column_name='parent_container_id';";
-                        var result = checkCmd.ExecuteScalar();
-                        if (result != null) hasParentId = true;
-                    }
-
-                    if (!hasParentId && parentContainerId.HasValue)
-                    {
-                        // Добавляем таблицу если нету
-                        using (var alterCmd = connection.CreateCommand())
-                        {
-                            alterCmd.CommandText = "ALTER TABLE Containers ADD COLUMN IF NOT EXISTS parent_container_id INT REFERENCES Containers(id) ON DELETE CASCADE;";
-                            alterCmd.ExecuteNonQuery();
-                        }
-                        hasParentId = true;
+                        alterCmd.CommandText = @"
+                            ALTER TABLE Containers ADD COLUMN IF NOT EXISTS parent_container_id INT REFERENCES Containers(id) ON DELETE CASCADE;
+                            ALTER TABLE Containers ADD COLUMN IF NOT EXISTS type VARCHAR(50);
+                            ALTER TABLE Containers ADD COLUMN IF NOT EXISTS description TEXT;
+                            ALTER TABLE Containers ADD COLUMN IF NOT EXISTS location_in_room VARCHAR(100);
+                            ALTER TABLE Containers ADD COLUMN IF NOT EXISTS image_data BYTEA;
+                        ";
+                        alterCmd.ExecuteNonQuery();
                     }
 
                     using (var cmd = connection.CreateCommand())
                     {
-                        if (hasParentId)
-                        {
-                            cmd.CommandText = "INSERT INTO Containers (name, room_id, parent_container_id) VALUES (@name, @roomId, @parentId)";
-                            cmd.Parameters.AddWithValue("@parentId", parentContainerId.HasValue ? (object)parentContainerId.Value : DBNull.Value);
-                        }
-                        else
-                        {
-                            cmd.CommandText = "INSERT INTO Containers (name, room_id) VALUES (@name, @roomId)";
-                        }
-
+                        cmd.CommandText = "INSERT INTO Containers (name, type, description, location_in_room, room_id, parent_container_id, image_data) " +
+                                          "VALUES (@name, @type, @description, @location, @roomId, @parentId, @imageData)";
                         cmd.Parameters.AddWithValue("@name", name ?? "");
+                        cmd.Parameters.AddWithValue("@type", type ?? "");
+                        cmd.Parameters.AddWithValue("@description", description ?? "");
+                        cmd.Parameters.AddWithValue("@location", location ?? "");
                         cmd.Parameters.AddWithValue("@roomId", roomId);
+                        cmd.Parameters.AddWithValue("@parentId", parentContainerId.HasValue ? (object)parentContainerId.Value : DBNull.Value);
+                        cmd.Parameters.AddWithValue("@imageData", imageData ?? (object)DBNull.Value);
                         cmd.ExecuteNonQuery();
                     }
                 }
@@ -360,7 +373,7 @@ namespace ApartmentInventory.Data
             }
         }
 
-        public void UpdateContainer(int id, string name)
+        public void UpdateContainer(int id, string name, string type, string description, string location, byte[] imageData = null)
         {
             try
             {
@@ -369,8 +382,12 @@ namespace ApartmentInventory.Data
                     connection.Open();
                     using (var cmd = connection.CreateCommand())
                     {
-                        cmd.CommandText = "UPDATE Containers SET name = @name WHERE id = @id";
+                        cmd.CommandText = "UPDATE Containers SET name = @name, type = @type, description = @description, location_in_room = @location, image_data = @imageData WHERE id = @id";
                         cmd.Parameters.AddWithValue("@name", name ?? "");
+                        cmd.Parameters.AddWithValue("@type", type ?? "");
+                        cmd.Parameters.AddWithValue("@description", description ?? "");
+                        cmd.Parameters.AddWithValue("@location", location ?? "");
+                        cmd.Parameters.AddWithValue("@imageData", imageData ?? (object)DBNull.Value);
                         cmd.Parameters.AddWithValue("@id", id);
                         cmd.ExecuteNonQuery();
                     }
@@ -403,22 +420,30 @@ namespace ApartmentInventory.Data
             }
         }
 
-        public void AddItem(string name, string itemType, string description, int roomId, int? containerId, string locationInRoom)
+        public void AddItem(string name, string itemType, string description, int roomId, int? containerId, string locationInRoom, byte[] imageData = null)
         {
             try
             {
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
                     connection.Open();
+
+                    using (var alterCmd = connection.CreateCommand())
+                    {
+                        alterCmd.CommandText = "ALTER TABLE Items ADD COLUMN IF NOT EXISTS image_data BYTEA;";
+                        alterCmd.ExecuteNonQuery();
+                    }
+
                     using (var cmd = connection.CreateCommand())
                     {
-                        cmd.CommandText = "INSERT INTO Items (name, type, description, location_in_room, container_id, room_id) VALUES (@name, @type, @description, @location, @containerId, @roomId)";
+                        cmd.CommandText = "INSERT INTO Items (name, type, description, location_in_room, container_id, room_id, image_data) VALUES (@name, @type, @description, @location, @containerId, @roomId, @imageData)";
                         cmd.Parameters.AddWithValue("@name", name ?? "");
                         cmd.Parameters.AddWithValue("@type", itemType ?? "");
                         cmd.Parameters.AddWithValue("@description", description ?? "");
                         cmd.Parameters.AddWithValue("@location", locationInRoom ?? "");
                         cmd.Parameters.AddWithValue("@containerId", (object)containerId ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@roomId", roomId);
+                        cmd.Parameters.AddWithValue("@imageData", (object)imageData ?? DBNull.Value);
                         cmd.ExecuteNonQuery();
                     }
                 }
@@ -429,7 +454,7 @@ namespace ApartmentInventory.Data
             }
         }
 
-        public void UpdateItem(int id, string name, string itemType, string description, int roomId, int? containerId, string locationInRoom)
+        public void UpdateItem(int id, string name, string itemType, string description, int roomId, int? containerId, string locationInRoom, byte[] imageData = null)
         {
             try
             {
@@ -438,7 +463,16 @@ namespace ApartmentInventory.Data
                     connection.Open();
                     using (var cmd = connection.CreateCommand())
                     {
-                        cmd.CommandText = "UPDATE Items SET name = @name, type = @type, description = @description, location_in_room = @location, container_id = @containerId, room_id = @roomId WHERE id = @id";
+                        if (imageData != null) 
+                        {
+                            cmd.CommandText = "UPDATE Items SET name = @name, type = @type, description = @description, location_in_room = @location, container_id = @containerId, room_id = @roomId, image_data = @imageData WHERE id = @id";
+                            cmd.Parameters.AddWithValue("@imageData", imageData);
+                        }
+                        else
+                        {
+                            cmd.CommandText = "UPDATE Items SET name = @name, type = @type, description = @description, location_in_room = @location, container_id = @containerId, room_id = @roomId WHERE id = @id";
+                        }
+
                         cmd.Parameters.AddWithValue("@name", name ?? "");
                         cmd.Parameters.AddWithValue("@type", itemType ?? "");
                         cmd.Parameters.AddWithValue("@description", description ?? "");

@@ -1,13 +1,17 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
+using System.Windows.Media.Imaging;
+using Microsoft.Win32;
 using ApartmentInventory.Models;
 
 namespace ApartmentInventory.Views
 {
     public partial class AddItemWindow : Window
     {
+        public byte[] ImageData { get; private set; }
         public string ItemName { get; set; }
         public string ItemType { get; set; }
         public string Description { get; set; }
@@ -138,6 +142,110 @@ namespace ApartmentInventory.Views
         private void ContainerComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
 
+        }
+
+        public void LoadExistingImage(byte[] imageData)
+        {
+            ImageData = imageData;
+            if (ImageData != null && ImageData.Length > 0)
+            {
+                LoadImageToPreview(ImageData);
+            }
+        }
+
+        private void LoadImageToPreview(byte[] data)
+        {
+            try
+            {
+                using (var stream = new MemoryStream(data))
+                {
+                    var image = new BitmapImage();
+                    image.BeginInit();
+                    image.CacheOption = BitmapCacheOption.OnLoad;
+                    image.StreamSource = stream;
+                    image.EndInit();
+                    PhotoPreview.Source = image;
+                }
+            }
+            catch { }
+        }
+
+        private void Window_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                e.Effects = DragDropEffects.Copy;
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+            e.Handled = true;
+        }
+
+        private void Window_Drop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                if (files != null && files.Length > 0)
+                {
+                    string filePath = files[0];
+                    ProcessImageFile(filePath);
+                }
+            }
+        }
+
+        private void PhotoPreview_Drop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                if (files != null && files.Length > 0)
+                {
+                    string filePath = files[0];
+                    ProcessImageFile(filePath);
+                }
+                e.Handled = true;
+            }
+        }
+
+        private void PhotoPreview_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            openFileDialog.Filter = "Image files (*.png;*.jpeg;*.jpg)|*.png;*.jpeg;*.jpg|All files (*.*)|*.*";
+            if (openFileDialog.ShowDialog() == true)
+            {
+                ProcessImageFile(openFileDialog.FileName);
+            }
+        }
+
+        private void ProcessImageFile(string filePath)
+        {
+            try
+            {
+                string ext = Path.GetExtension(filePath).ToLower();
+                if (ext == ".jpg" || ext == ".jpeg" || ext == ".png")
+                {
+                    // Читаем файл в массив байт
+                    ImageData = File.ReadAllBytes(filePath);
+                    LoadImageToPreview(ImageData);
+                }
+                else
+                {
+                    MessageBox.Show("Пожалуйста, выберите изображение (JPG, PNG).", "Неверный формат", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при загрузке изображения: {ex.Message}");
+            }
+        }
+
+        private void RemovePhoto_Click(object sender, RoutedEventArgs e)
+        {
+            ImageData = null;
+            PhotoPreview.Source = null;
         }
     }
 }

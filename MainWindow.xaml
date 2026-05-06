@@ -53,6 +53,13 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="Изображение" Width="80">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Image Source="{Binding Photo}" Width="30" Height="30" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTextColumn Header="Тип" Binding="{Binding ItemType}" Width="150"/>
                         <DataGridTextColumn Header="Местоположение" Binding="{Binding LocationInRoom}" Width="150"/>
                         <DataGridTextColumn Header="Контейнер/Комната" Binding="{Binding Container.Name}" Width="150"/>

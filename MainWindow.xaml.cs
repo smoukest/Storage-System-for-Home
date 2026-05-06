@@ -119,6 +119,10 @@ namespace _25._04
                     {
                         OriginalItem = container,
                         Name = $"📦 {container.Name}",
+                        ItemType = container.ItemType,
+                        Description = container.Description,
+                        LocationInRoom = container.LocationInRoom,
+                        ImageData = container.ImageData,
                         ElementType = "Контейнер",
                         Level = level,
                         IsExpanded = false,
@@ -144,6 +148,7 @@ namespace _25._04
                             ItemType = item.ItemType,
                             Description = item.Description,
                             LocationInRoom = item.LocationInRoom,
+                            ImageData = item.ImageData,
                             Container = container,
                             ElementType = "Вещь",
                             Level = level + 1,
@@ -173,6 +178,7 @@ namespace _25._04
                         ItemType = item.ItemType,
                         Description = item.Description,
                         LocationInRoom = item.LocationInRoom,
+                        ImageData = item.ImageData,
                         Container = null,
                         ElementType = "Вещь",
                         Level = 1,
@@ -326,7 +332,8 @@ namespace _25._04
                 _viewModel.SelectedContainer = container;
                 _viewModel.SelectedRoom = container.Room;
                 _viewModel.SelectedItem = null;
-                InfoTextBlock.Text = $"Контейнер: {container.Name} (в комнате: {container.Room.Name})";
+                var location = string.IsNullOrEmpty(container.LocationInRoom) ? "не указано" : container.LocationInRoom;
+                InfoTextBlock.Text = $"Контейнер: {container.Name} | Вид: {container.ItemType} | В комнате: {container.Room.Name} | Местоположение: {location} | Описание: {container.Description}";
             }
             else if (node.OriginalItem is Item item)
             {
@@ -389,6 +396,25 @@ namespace _25._04
             public bool HasChildren => Children != null && Children.Count > 0;
             public TreeGridNode Parent { get; set; }
             public List<TreeGridNode> Children { get; set; } = new List<TreeGridNode>();
+            public byte[] ImageData { get; set; }
+
+            public ImageSource Photo
+            {
+                get
+                {
+                    if (ImageData == null || ImageData.Length == 0) return null;
+                    using (var stream = new System.IO.MemoryStream(ImageData))
+                    {
+                        var image = new BitmapImage();
+                        image.BeginInit();
+                        image.CacheOption = BitmapCacheOption.OnLoad;
+                        image.StreamSource = stream;
+                        image.EndInit();
+                        image.Freeze();
+                        return image;
+                    }
+                }
+            }
 
             public Brush RowBackground 
             {
@@ -464,7 +490,7 @@ namespace _25._04
             var dialog = new AddContainerWindow { Owner = this };
             if (dialog.ShowDialog() == true)
             {
-                _viewModel.AddContainer(dialog.ContainerName, targetRoom.Id, parentContainer?.Id);
+                _viewModel.AddContainer(dialog.ContainerName, dialog.ContainerType, dialog.Description, dialog.LocationInRoom, targetRoom.Id, parentContainer?.Id, dialog.ImageData);
                 RefreshTreeView();
             }
         }
@@ -517,7 +543,8 @@ namespace _25._04
                         dialog.Description,
                         roomId.Value,
                         containerId,
-                        dialog.LocationInRoom
+                        dialog.LocationInRoom,
+                        dialog.ImageData
                     );
                     RefreshTreeView();
                 }
@@ -550,9 +577,14 @@ namespace _25._04
             {
                 var dialog = new AddContainerWindow { Owner = this, Title = "Редактировать контейнер" };
                 dialog.ContainerName = container.Name;
+                dialog.ContainerType = container.ItemType;
+                dialog.Description = container.Description;
+                dialog.LocationInRoom = container.LocationInRoom;
+                if (container.ImageData != null) dialog.LoadExistingImage(container.ImageData);
+
                 if (dialog.ShowDialog() == true)
                 {
-                    _viewModel.UpdateContainer(container.Id, dialog.ContainerName);
+                    _viewModel.UpdateContainer(container.Id, dialog.ContainerName, dialog.ContainerType, dialog.Description, dialog.LocationInRoom, dialog.ImageData);
                     RefreshTreeView();
                 }
             }
@@ -563,6 +595,7 @@ namespace _25._04
                 dialog.ItemType = item.ItemType;
                 dialog.Description = item.Description;
                 dialog.LocationInRoom = item.LocationInRoom;
+                if (item.ImageData != null) dialog.LoadExistingImage(item.ImageData);
 
                 var parentRoom = item.Room;
                 dialog.SetRooms(_viewModel.Rooms.ToList());
@@ -583,7 +616,8 @@ namespace _25._04
                         dialog.Description,
                         roomId,
                         containerId,
-                        dialog.LocationInRoom
+                        dialog.LocationInRoom,
+                        dialog.ImageData
                     );
                     RefreshTreeView();
                 }
@@ -681,7 +715,7 @@ namespace _25._04
             var dialog = new AddContainerWindow { Owner = this };
             if (dialog.ShowDialog() == true)
             {
-                _viewModel.AddContainer(dialog.ContainerName, room.Id);
+                _viewModel.AddContainer(dialog.ContainerName, dialog.ContainerType, dialog.Description, dialog.LocationInRoom, room.Id, null, dialog.ImageData);
                 RefreshTreeView();
             }
         }
@@ -690,9 +724,14 @@ namespace _25._04
         {
             var dialog = new AddContainerWindow { Owner = this, Title = "Редактировать контейнер" };
             dialog.ContainerName = container.Name;
+            dialog.ContainerType = container.ItemType;
+            dialog.Description = container.Description;
+            dialog.LocationInRoom = container.LocationInRoom;
+            if (container.ImageData != null) dialog.LoadExistingImage(container.ImageData);
+
             if (dialog.ShowDialog() == true)
             {
-                _viewModel.UpdateContainer(container.Id, dialog.ContainerName);
+                _viewModel.UpdateContainer(container.Id, dialog.ContainerName, dialog.ContainerType, dialog.Description, dialog.LocationInRoom, dialog.ImageData);
                 RefreshTreeView();
             }
         }
@@ -714,7 +753,8 @@ namespace _25._04
                     dialog.Description,
                     room.Id,
                     containerId,
-                    dialog.LocationInRoom
+                    dialog.LocationInRoom,
+                    dialog.ImageData
                 );
                 RefreshTreeView();
             }
@@ -727,6 +767,7 @@ namespace _25._04
             dialog.ItemType = item.ItemType;
             dialog.Description = item.Description;
             dialog.LocationInRoom = item.LocationInRoom;
+            if (item.ImageData != null) dialog.LoadExistingImage(item.ImageData);
 
             var room = item.Room;
             dialog.SetRooms(_viewModel.Rooms.ToList());
@@ -749,7 +790,8 @@ namespace _25._04
                     dialog.Description,
                     roomId,
                     containerId,
-                    dialog.LocationInRoom
+                    dialog.LocationInRoom,
+                    dialog.ImageData
                 );
                 RefreshTreeView();
             }

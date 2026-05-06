@@ -2,26 +2,49 @@
 <Window x:Class="ApartmentInventory.Views.AddItemWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Добавить предмет" Height="600" Width="580"
-        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
-    <Grid Margin="25">
-        <StackPanel>
+        Title="Добавить предмет" Height="600" Width="600"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" AllowDrop="True" Drop="Window_Drop" DragEnter="Window_DragEnter">
+    <Grid Margin="25" Background="Transparent">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="150"/>
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0" Margin="0,0,15,0">
             <TextBlock Text="Название предмета:" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
             <TextBox x:Name="ItemNameTextBox" Height="36" Padding="10" Margin="0,0,0,12" FontSize="12"/>
+
             <TextBlock Text="Тип предмета:" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
             <TextBox x:Name="ItemTypeTextBox" Height="36" Padding="10" Margin="0,0,0,12" FontSize="12"/>
+
             <TextBlock Text="Описание:" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
             <TextBox x:Name="ItemDescriptionTextBox" Height="70" Padding="10" TextWrapping="Wrap" Margin="0,0,0,12" VerticalScrollBarVisibility="Auto" FontSize="12"/>
+
             <TextBlock Text="Местоположение:" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
             <TextBox x:Name="LocationTextBox" Height="36" Padding="10" Margin="0,0,0,12" FontSize="12"/>
+
             <TextBlock Text="Комната:" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
             <ComboBox x:Name="RoomComboBox" Height="36" Padding="10" Margin="0,0,0,12" FontSize="12" IsEnabled="False"/>
+
             <TextBlock Text="Коробка:" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
             <ComboBox x:Name="ContainerComboBox" Height="36" Padding="10" Margin="0,0,0,18" FontSize="12" IsEnabled="False" SelectionChanged="ContainerComboBox_SelectionChanged"/>
+
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Content="ОК" Width="80" Height="36" Click="OkButton_Click" Margin="0,0,10,0" FontSize="12"/>
                 <Button Content="Отмена" Width="80" Height="36" IsCancel="True" FontSize="12"/>
             </StackPanel>
+        </StackPanel>
+
+        <!-- Зона для фото -->
+        <StackPanel Grid.Column="1">
+            <TextBlock Text="Фото:" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
+            <Border BorderBrush="#CCCCCC" BorderThickness="1" Height="150" Background="#FAFAFA">
+                <Grid>
+                    <TextBlock Text="Перетащите фото&#x0a;или нажмите здесь" TextAlignment="Center" VerticalAlignment="Center" Foreground="#999" FontSize="11" IsHitTestVisible="False"/>
+                    <Image x:Name="PhotoPreview" Stretch="Uniform" MouseLeftButtonDown="PhotoPreview_MouseLeftButtonDown" Cursor="Hand" AllowDrop="True" Drop="PhotoPreview_Drop"/>
+                </Grid>
+            </Border>
+            <Button Content="Удалить фото" Margin="0,10,0,0" Click="RemovePhoto_Click" FontSize="11" Foreground="Red" Background="Transparent" BorderThickness="0" Cursor="Hand"/>
         </StackPanel>
     </Grid>
 </Window>

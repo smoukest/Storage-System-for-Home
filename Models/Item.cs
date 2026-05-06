@@ -11,6 +11,7 @@ namespace ApartmentInventory.Models
         public int RoomId { get; set; }
         public int? ContainerId { get; set; }
         public string LocationInRoom { get; set; }
+        public byte[] ImageData { get; set; }
 
         public Room Room { get; set; }
         public Container Container { get; set; }

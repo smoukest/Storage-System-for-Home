@@ -241,11 +241,11 @@ namespace ApartmentInventory.ViewModels
             }
         }
 
-        public void AddContainer(string name, int roomId, int? parentContainerId = null)
+        public void AddContainer(string name, string type, string description, string location, int roomId, int? parentContainerId = null, byte[] imageData = null)
         {
             try
             {
-                _dbContext.AddContainer(name, roomId, parentContainerId);
+                _dbContext.AddContainer(name, type, description, location, roomId, parentContainerId, imageData);
                 LoadRooms();
             }
             catch (Exception ex)
@@ -254,11 +254,11 @@ namespace ApartmentInventory.ViewModels
             }
         }
 
-        public void UpdateContainer(int id, string name)
+        public void UpdateContainer(int id, string name, string type, string description, string location, byte[] imageData = null)
         {
             try
             {
-                _dbContext.UpdateContainer(id, name);
+                _dbContext.UpdateContainer(id, name, type, description, location, imageData);
                 LoadRooms();
             }
             catch (Exception ex)
@@ -267,11 +267,11 @@ namespace ApartmentInventory.ViewModels
             }
         }
 
-        public void AddItem(string name, string itemType, string description, int roomId, int? containerId, string locationInRoom)
+        public void AddItem(string name, string itemType, string description, int roomId, int? containerId, string locationInRoom, byte[] imageData = null)
         {
             try
             {
-                _dbContext.AddItem(name, itemType, description, roomId, containerId, locationInRoom);
+                _dbContext.AddItem(name, itemType, description, roomId, containerId, locationInRoom, imageData);
                 LoadRooms();
             }
             catch (Exception ex)
@@ -280,11 +280,11 @@ namespace ApartmentInventory.ViewModels
             }
         }
 
-        public void UpdateItem(int id, string name, string itemType, string description, int roomId, int? containerId, string locationInRoom)
+        public void UpdateItem(int id, string name, string itemType, string description, int roomId, int? containerId, string locationInRoom, byte[] imageData = null)
         {
             try
             {
-                _dbContext.UpdateItem(id, name, itemType, description, roomId, containerId, locationInRoom);
+                _dbContext.UpdateItem(id, name, itemType, description, roomId, containerId, locationInRoom, imageData);
                 LoadRooms();
             }
             catch (Exception ex)
